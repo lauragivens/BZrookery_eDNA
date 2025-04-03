@@ -9,7 +9,7 @@ fastqc --version
 
 # First, we are going to look at the quality of our reads  
 RAWDIR=/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI
-OUTDIR=$RAWDIR/FQCreports
+OUTDIR=$RAWDIR/FQCreports_raw
 mkdir -p $OUTDIR
 
 find $RAWDIR/fastq -type f -name "*.fastq" -o -name "*.fastq.gz" | xargs fastqc --threads 4 --outdir "$OUTDIR" 

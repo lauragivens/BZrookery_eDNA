@@ -3,27 +3,22 @@ conda activate fastqc
 
 #move report files from cutadapt into their own directory
 cd /Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI
-mkdir -p cutadapt/report
- mv fastq/*.json cutadapt/report/
-#move undetermined barcode files into their own directory
-mkdir -p UnknownBarcodes/trim
- mv cutadapt/trim/Undetermined* UnknownBarcodes/trim
- 
- #go to 02_Trim_QC.R
- #plotqualityprofile for R reads fails with BiocParallel error; Error in density.default(qscore):'x' contains missing values
- #my guess is this is because of the reports from cutadapt showing that such a low percentage of r reads are passing 
  
 #fastqc and multiqc report
- RAWDIR=/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI
- TRIMDIR=$RAWDIR/cutadapt/FQCreports
- mkdir -p $TRIMDIR
+ DIR=/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/trim
+ REPORT=$DIR/reports-fastqc
+ mkdir -p $REPORT
  
- find $RAWDIR/cutadapt/trim -type f -name "*.fastq" -o -name "*.fastq.gz" | xargs fastqc --threads 4 outdir "$TRIMDIR"
+ find $DIR -type f -name "*.fastq" -o -name "*.fastq.gz" | xargs fastqc --threads 4 outdir "$REPORT"
 
 #aggregate all the fastqc files into a summary file 
-cd $TRIMDIR
+multiqc $DIR/reports-cutadapt/ --filename "multiqc-cutadapt-report" #
 
-multiqc . #run multiqc
+multiqc $REPORT/ --filename "multiqc-cutadapt-reads-report" #check overall quality of reads
+multiqc $REPORT/*R1* --filename "$REPORT/multiqc-cutadapt-reads-report-R1" #check quality of forward reads
+multiqc $REPORT/*R2* --filename "$REPORT/multiqc-cutadapt-reads-report-R2" #check quality of reverse reads
+
+#both F and R start dropping off at 270 bp
 
 #1 Apr 2025
-
+#edited 2 Apr 2025
