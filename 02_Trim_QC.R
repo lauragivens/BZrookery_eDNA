@@ -146,7 +146,8 @@ table(nchar(getSequences(seqtab))) # Inspect distribution of sequence lengths
 
 # Step 8: remove chimeras
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
-
+dim(seqtab.nochim)
+table(nchar(getSequences(seqtab.nochim))) # Inspect distribution of sequence lengths
 ## check how many chimeras/what proportion of reads they make up 
 sum(seqtab.nochim)/sum(seqtab) #inspect the proportion of reads made up by chimeras
 
@@ -176,6 +177,12 @@ saveRDS(track,file=paste0(dir_results,'/track_reads.rds'))
 ## also save some files as csv
 write.csv(seqtab.nochim,file=paste0(dir_results,'/seqtab.nochim.csv'))
 write.csv(track,file=paste0(dir_results,'/track_reads.csv'))
+
+## Save fasta
+uniquesToFasta(getUniques(seqtab.nochim), 
+               fout= paste0(dir_results,"/dada2-uniqueseqs.fasta")
+               )
+uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 
 # Step 11: return info 
 Sys.Date()
