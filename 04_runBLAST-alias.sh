@@ -1,11 +1,11 @@
 #!/bin/bash
   
-#SBATCH --job-name=rookeryBLAST
+#SBATCH --job-name=rookeryBLASTalias
 #SBATCH --account=schultzlab -p schultzlab
-#SBATCH --output=/work/lag66/rookery/core_ntBLAST.out
-#SBATCH --error=/work/lag66/rookery/core_ntBLAST.err
+#SBATCH --output=/work/lag66/rookery/alias_ntBLAST.out
+#SBATCH --error=/work/lag66/rookery/alias_ntBLAST.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mem=250G
+#SBATCH --mem=150G
 #SBATCH --mail-user=lag66@duke.edu
 
 # --------------------------------------- load modules ---------------------------------------
@@ -26,14 +26,16 @@ export BLASTDB
  
 echo we will be BLASTing against a local BLAST nt database
 
+
 # --------------------------------------- start BLAST ---------------------------------------
-echo starting BLAST
-echo
-blastn -db /hpc/group/schultzlab/lag66/core_nt -query $FILES/dada2-uniqueseqs.fasta \
-		-perc_identity 97 \
-			-word_size 30 \
-				-outfmt 6 \
-					-num_threads 4 \
-						-out $FILES/dada2.uniques.BLAST.default.tsv
+echo starting BLAST against MAR alias db  
+echo 
+blastn -db core_nt/MAR_taxid -query $FILES/dada2-uniqueseqs.fasta \
+                -perc_identity 97 \
+                        -word_size 30 \
+                                -outfmt 6 \
+                                        -num_threads 4 \
+                                                -out $FILES/dada2.uniques.BLAST.martaxid.tsv
+
 
 echo $(date)
