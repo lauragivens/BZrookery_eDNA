@@ -77,3 +77,8 @@ saveRDS(ps,paste0(dir_results,"/ps.rds"))
 saveRDS(taxa_final,paste0(dir_results,"/taxtable.rds"))
 saveRDS(curated_asv,paste0(dir_results,"/asvtable.rds"))
 saveRDS(samplelist,paste0(dir_results,'/metadata.rds'))
+
+
+write.csv(taxa_final,paste0(dir_results,"/taxtable.csv"))
+write.csv(curated_asv,paste0(dir_results,"/asvtable.csv"))
+write.csv(samplelist,paste0(dir_results,'/metadata.csv'))
