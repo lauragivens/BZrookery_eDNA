@@ -20,10 +20,17 @@ write.csv(taxResults, "taxonomizr.taxResults.csv")
 #########
 
 marblastResults<-read.table('dada2.uniques.BLAST.martaxid.tsv',header=FALSE,stringsAsFactors=FALSE)
-maraccessions<-strsplit(marblastResults[,2],'\\|')
+maraccessions<-strsplit(marblastResults[,2],'\\|') #pull accession numbers into a list
 
-martaxaId<-accessionToTaxa(maraccessions,"accessionTaxa.sql")
-martaxResults <- getTaxonomy(martaxaId,'accessionTaxa.sql')
+martaxaId<-accessionToTaxa(maraccessions,"~/accessionTaxa.sql") #converts accession number to tax id
+martaxResults <- as.data.frame(getTaxonomy(unique(martaxaId),'~/accessionTaxa.sql')) %>% #converts taxa ids to tax ranks
+                    rownames_to_column(.,"taxid") %>% mutate(.,taxid=str_trim(taxid))
+
+t1 <- marblastResults[1:2] #qseqid sseqid
+t1$taxid <- unlist(martaxaId) %>% as.character()
+t2 <- merge(t1,martaxResults,by.x='taxid',all.x=TRUE) %>% rename('qseqid'="V1","sseqid"="V2")
 
 write.csv(martaxaId,"taxonomizr.mar.taxaID.csv")
 write.csv(martaxResults, "taxonomizr.mar.taxResults.csv")
+write.csv(t2,'taxonomizr.mar.merge.csv')
+write_rds(t2,'taxonomizr.mar.merge.rds')
