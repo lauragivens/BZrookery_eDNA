@@ -8,6 +8,7 @@ setwd(dir_results)
 
 # upload BLAST files 
 blast_output <- read.delim('dada2.uniques.BLAST.martaxid.tsv',header = FALSE)
+colnames(blast_output) <- c('qseqid','sseqid','pident','length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore')
 
 # upload accession - to - taxid files
 taxid_mar <- read.csv('taxonomizr.mar.taxaID.csv')
@@ -52,7 +53,17 @@ for (i in 1:dim(qseqid_unique)[1]) {
 }
 taxa_final <- qseqid_unique %>% mutate(.,seqid=word(qseqid,sep=";"),.before=1) 
 rownames(taxa_final) <- taxa_final$seqid
-taxa_final <- select(taxa_final, c(15:21))
+taxa_sub <- select(taxa_final, c(15:21))
+
+# upload trophic data
+bzfishmeta <- read.csv(paste0(dir,'/BelizeanFishSpecies.csv'),header=TRUE)
+bzfishmeta <- bzfishmeta %>% rename(., 'taxid'="NCBI_taxid") %>% mutate(taxid=as.character(taxid)) %>% select(-c(starts_with("AccNo"),'Species.name'))
+bzfishmeta <- bzfishmeta %>% filter(!is.na(taxid))
+
+# combine trophic and tax data  
+taxa_troph <- left_join((taxa_final %>% select(c(seqid,14:21))),bzfishmeta,by='taxid')
+rownames(taxa_troph) <- taxa_troph$seqid
+taxa_troph <- taxa_troph %>% select(-c('seqid')) %>% relocate(taxid,.after='species')
 
 # upload asv table  
 curated_lulu <- readRDS('lulu-clustertable.rds')
@@ -68,17 +79,24 @@ samplelist$X <- NULL
 # assemble ps object
 otu <- otu_table((curated_asv),taxa_are_rows = TRUE)
 meta <- sample_data(samplelist)
-tax <- tax_table(as.matrix(taxa_final))
+tax <- tax_table(as.matrix(taxa_sub))
+taxtroph <- tax_table(as.matrix(taxa_troph))
 
 ps <- phyloseq(otu,meta,tax)
+ps.troph <- phyloseq(otu,meta,taxtroph)
 ps
+ps.troph
 
 saveRDS(ps,paste0(dir_results,"/ps.rds"))
-saveRDS(taxa_final,paste0(dir_results,"/taxtable.rds"))
+saveRDS(ps.troph,paste0(dir_results,"/ps.troph.rds"))
+
+saveRDS(taxa_sub,paste0(dir_results,"/taxtable.rds"))
+saveRDS(taxa_troph,paste0(dir_results,"/taxtable.wtroph.rds"))
 saveRDS(curated_asv,paste0(dir_results,"/asvtable.rds"))
 saveRDS(samplelist,paste0(dir_results,'/metadata.rds'))
 
 
-write.csv(taxa_final,paste0(dir_results,"/taxtable.csv"))
+write.csv(taxa_sub,paste0(dir_results,"/taxtable.csv"))
+write.csv(taxa_troph,paste0(dir_results,"/taxtable.wtroph.csv"))
 write.csv(curated_asv,paste0(dir_results,"/asvtable.csv"))
 write.csv(samplelist,paste0(dir_results,'/metadata.csv'))
