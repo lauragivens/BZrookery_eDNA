@@ -2,7 +2,8 @@ library(phyloseq)
 library(vegan)
 library(tidyverse)
 
-dir <- "/Volumes/Fuji/Mangroves"
+dir_home <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_man <- "/Volumes/Fuji/Mangroves"
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 setwd(dir_results)
 
@@ -14,6 +15,7 @@ colnames(blast_output) <- c('qseqid','sseqid','pident','length','mismatch','gapo
 taxid_mar <- read.csv('taxonomizr.mar.taxaID.csv')
 taxresults_mar <- read.csv('taxonomizr.mar.taxResults.csv')
 t2 <- readRDS('taxonomizr.mar.merge.rds')
+names(t2)[4:10] <- str_to_title(names(t2)[4:10])
 
 # combine taxa names and blast output 
 taxa_df <- left_join(blast_output,t2,by=c('qseqid','sseqid'))
@@ -56,14 +58,21 @@ rownames(taxa_final) <- taxa_final$seqid
 taxa_sub <- select(taxa_final, c(15:21))
 
 # upload trophic data
-bzfishmeta <- read.csv(paste0(dir,'/BelizeanFishSpecies.csv'),header=TRUE)
-bzfishmeta <- bzfishmeta %>% rename(., "NCBI_taxid" = "taxid") %>% mutate(taxid=as.character(taxid)) %>% select(-c(starts_with("AccNo"),'Species.name'))
+bzfishmeta <- read.csv(paste0(dir_man,'/BelizeanFishSpecies.csv'),header=TRUE)
+bzfishmeta <- bzfishmeta %>% dplyr::rename(., "taxid" = "NCBI_taxid", 
+                                    "Species.Abundance" = "Abundance") %>% 
+  mutate(taxid=as.character(taxid)) %>% 
+  select(-c(starts_with("AccNo"),'Species.name')) 
+
+names(bzfishmeta) <- trimws(names(bzfishmeta)) 
+names(bzfishmeta) <- gsub("_",".",names(bzfishmeta))
+
 bzfishmeta <- bzfishmeta %>% filter(!is.na(taxid))
 
 # combine trophic and tax data  
 taxa_troph <- left_join((taxa_final %>% select(c(seqid,14:21))),bzfishmeta,by='taxid')
 rownames(taxa_troph) <- taxa_troph$seqid
-taxa_troph <- taxa_troph %>% select(-c('seqid')) %>% relocate(taxid,.after='species')
+taxa_troph <- taxa_troph %>% select(-c('seqid')) %>% relocate(taxid,.after='Species')
 
 # upload asv table  
 curated_lulu <- readRDS('lulu-clustertable.rds')
@@ -72,9 +81,9 @@ cols_asv <- word(colnames(curated_asv),sep = "_",end=3)
 colnames(curated_asv) <- cols_asv
 
 # upload metadata
-samplelist <- read.csv(paste0(dir,"/TotalSampleList-BZ.csv"))
-rownames(samplelist) <- samplelist$X
-samplelist$X <- NULL
+samplelist <- read.csv(paste0(dir_man,"/TotalSampleList-BZ.csv"))
+rownames(samplelist) <- samplelist$SampleNameLong
+samplelist$SampleNameLong <- NULL
 
 # assemble ps object
 otu <- otu_table((curated_asv),taxa_are_rows = TRUE)
@@ -100,3 +109,5 @@ write.csv(taxa_sub,paste0(dir_results,"/taxtable.csv"))
 write.csv(taxa_troph,paste0(dir_results,"/taxtable.wtroph.csv"))
 write.csv(curated_asv,paste0(dir_results,"/asvtable.csv"))
 write.csv(samplelist,paste0(dir_results,'/metadata.csv'))
+
+save.image(paste0(dir_home,'/06_toPhyloseq.RData'))
