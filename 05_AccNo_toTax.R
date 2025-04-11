@@ -3,21 +3,28 @@
 # Script to convert accession numbers to taxonomy 
 # Using the R package 'taxonomizr' (https://cran.r-project.org/web/packages/taxonomizr/readme/README.html)
 library(taxonomizr)
+library(tidyverse)
 
 #prepareDatabase('accessionTaxa.sql') #download data from NCBI and prepare SQLite database
 ## uses a LOT of hard drive space, FYI
 
+
+######### Full database ######### 
+
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+setwd(dir_results)
+
 blastResults<-read.table('dada2.uniques.BLAST.default.tsv',header=FALSE,stringsAsFactors=FALSE)
 accessions<-strsplit(blastResults[,2],'\\|') #select the second column
 
-taxaId<-accessionToTaxa(accessions,"accessionTaxa.sql")
-taxResults <- getTaxonomy(taxaId,'accessionTaxa.sql')
+taxaId<-accessionToTaxa(accessions,"~/accessionTaxa.sql")
+taxResults <- getTaxonomy(taxaId,'~/accessionTaxa.sql')
 
 write.csv(taxaId,"taxonomizr.taxaID.csv")
 write.csv(taxResults, "taxonomizr.taxResults.csv")
 
 
-#########
+######### MAR database #########
 
 marblastResults<-read.table('dada2.uniques.BLAST.martaxid.tsv',header=FALSE,stringsAsFactors=FALSE)
 maraccessions<-strsplit(marblastResults[,2],'\\|') #pull accession numbers into a list
@@ -32,5 +39,9 @@ t2 <- merge(t1,martaxResults,by.x='taxid',all.x=TRUE) %>% rename('qseqid'="V1","
 
 write.csv(martaxaId,"taxonomizr.mar.taxaID.csv")
 write.csv(martaxResults, "taxonomizr.mar.taxResults.csv")
+
 write.csv(t2,'taxonomizr.mar.merge.csv')
 write_rds(t2,'taxonomizr.mar.merge.rds')
+
+
+save.image("/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata/05_AccNo_Tax.RData")

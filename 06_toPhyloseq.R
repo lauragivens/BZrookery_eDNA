@@ -2,7 +2,7 @@ library(phyloseq)
 library(vegan)
 library(tidyverse)
 
-dir_home <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_man <- "/Volumes/Fuji/Mangroves"
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 setwd(dir_results)
@@ -110,4 +110,4 @@ write.csv(taxa_troph,paste0(dir_results,"/taxtable.wtroph.csv"))
 write.csv(curated_asv,paste0(dir_results,"/asvtable.csv"))
 write.csv(samplelist,paste0(dir_results,'/metadata.csv'))
 
-save.image(paste0(dir_home,'/06_toPhyloseq.RData'))
+save.image(paste0(dir_data,'/06_toPhyloseq.RData'))
