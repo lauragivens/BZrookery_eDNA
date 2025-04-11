@@ -1,3 +1,4 @@
+library(Biostrings)
 library(lulu)
 
 # cluster into ASVs
@@ -10,6 +11,7 @@ library(lulu)
 # requires a fasta file of sequences
 
 ###########################################
+
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 

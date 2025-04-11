@@ -57,7 +57,7 @@ taxa_sub <- select(taxa_final, c(15:21))
 
 # upload trophic data
 bzfishmeta <- read.csv(paste0(dir,'/BelizeanFishSpecies.csv'),header=TRUE)
-bzfishmeta <- bzfishmeta %>% rename(., 'taxid'="NCBI_taxid") %>% mutate(taxid=as.character(taxid)) %>% select(-c(starts_with("AccNo"),'Species.name'))
+bzfishmeta <- bzfishmeta %>% rename(., "NCBI_taxid" = "taxid") %>% mutate(taxid=as.character(taxid)) %>% select(-c(starts_with("AccNo"),'Species.name'))
 bzfishmeta <- bzfishmeta %>% filter(!is.na(taxid))
 
 # combine trophic and tax data  

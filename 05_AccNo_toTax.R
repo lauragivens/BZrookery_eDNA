@@ -4,7 +4,7 @@
 # Using the R package 'taxonomizr' (https://cran.r-project.org/web/packages/taxonomizr/readme/README.html)
 library(taxonomizr)
 
-prepareDatabase('accessionTaxa.sql') #download data from NCBI and prepare SQLite database
+#prepareDatabase('accessionTaxa.sql') #download data from NCBI and prepare SQLite database
 ## uses a LOT of hard drive space, FYI
 
 blastResults<-read.table('dada2.uniques.BLAST.default.tsv',header=FALSE,stringsAsFactors=FALSE)
