@@ -4,6 +4,7 @@
 
 # Session Data files
 Rdata/*
+*.RData
 .RData
 .RDataTmp
 .DS_Store
