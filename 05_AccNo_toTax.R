@@ -8,11 +8,11 @@ library(tidyverse)
 dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 setwd(dir_results)
-
 #prepareDatabase('accessionTaxa.sql') #download data from NCBI and prepare SQLite database
 ## uses a LOT of hard drive space, FYI
 
 ######### Full database ######### 
+
 blastResults<-read.table('dada2.uniques.BLAST.default.tsv',header=FALSE,stringsAsFactors=FALSE)
 accessions<-strsplit(blastResults[,2],'\\|') #select the second column
 
@@ -43,4 +43,8 @@ write.csv(t2,'taxonomizr.mar.merge.csv')
 write_rds(t2,'taxonomizr.mar.merge.rds')
 
 
+<<<<<<< HEAD
 save.image(paste0(dir_data,"/05_AccNo_Tax.RData"))
+=======
+save.image("/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata/05_AccNo_Tax.RData")
+>>>>>>> 5e51de716067e0ea908f933318958b34011b9406

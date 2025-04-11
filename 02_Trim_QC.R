@@ -191,6 +191,6 @@ uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 Sys.Date()
 sessionInfo()
 save.image("/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/BZrookery_eDNA.RData")
-save.image(paste0(dir_data,"/02_Trim_QC.RData"))
+save.image(paste0(dir_data,"/02_Trim_QC.RData"))\
 
 # assembled with help from https://benjjneb.github.io/dada2/tutorial.html
