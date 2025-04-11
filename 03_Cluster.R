@@ -11,10 +11,11 @@ library(lulu)
 # requires a fasta file of sequences
 
 ###########################################
-
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
-
+seqtab.nochim <- readRDS(file=paste0(dir_results,'/seqtab.nochim.rds'))
+                         
 # convert seqtab
 lulu.seqtab.nochim <- as.data.frame(seqtab.nochim)
 colnames(lulu.seqtab.nochim) <- word(names(uniqueseqs),sep=';')
@@ -45,4 +46,7 @@ match_list[1:3,1:3]
 
 # 3. Run LULU curation 
 curated_result <- lulu(lulu.seqtab.nochim, match_list)
+
+# Save  
 saveRDS(curated_result,file=paste0(dir_results,"/lulu-clustertable.rds"))
+save.image(paste0(dir_data,"/03_LULU.RData"))

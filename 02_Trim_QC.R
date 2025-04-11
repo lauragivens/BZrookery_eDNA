@@ -14,6 +14,9 @@ dir_home <- getwd()
 dir_raw<-paste0(dir_home,'/fastq')
 dir_cut<-paste0(dir_home,'/cutadapt')
 if(!dir.exists(dir_cut)) dir.create(dir_cut)
+
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+if(!dir.exists(dir_data)) dir.create(dir_data)
   
 cutadapt<-"/Users/lauragivens/miniconda3/envs/cutadapt/bin/cutadapt"
 # primer sequences
@@ -188,5 +191,6 @@ uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 Sys.Date()
 sessionInfo()
 save.image("/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/BZrookery_eDNA.RData")
+save.image(paste0(dir_data,"/02_Trim_QC.RData"))
 
 # assembled with help from https://benjjneb.github.io/dada2/tutorial.html
