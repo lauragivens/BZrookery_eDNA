@@ -1,6 +1,7 @@
 library(phyloseq)
 library(tidyverse)
 
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 setwd(dir_results)
 

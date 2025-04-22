@@ -1,0 +1,322 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Load  
+Load libraries  
+```{r,message=FALSE}
+library(phyloseq)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(vegan)
+```
+
+Load data  
+```{r load}
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+
+ps <- readRDS(paste0(dir_results,"/ps.rds"))
+ps.troph <- readRDS(paste0(dir_results,"/ps.troph.rds"))
+
+taxa <- readRDS(paste0(dir_results,"/taxtable.rds"))
+taxa_troph <- readRDS(paste0(dir_results,"/taxtable.wtroph.rds"))
+curated_lulu <- readRDS(paste0(dir_results,'/lulu-clustertable.rds'))
+curated_asv <- readRDS(paste0(dir_results,"/asvtable.rds"))
+samplelist <- readRDS(paste0(dir_results,'/metadata.rds'))
+```
+
+```{r}
+troph_edit <- taxa_troph %>% mutate(.,
+                      Trophic.Base = word(Trophic.Index,sep=" ") %>% as.numeric(),
+                      Trophic.Round = round(as.numeric(Trophic.Base)),
+                      .after = Trophic.Index
+                      ) 
+
+tax_table(ps.troph) <- as.matrix(troph_edit)
+
+samplelist$Date <- lubridate::dmy(samplelist$Date)
+samplelist$Month <- lubridate::month(samplelist$Date)
+samplelist <- samplelist %>% mutate(.,
+                                    Rookery=case_when(Rookery=="R" ~ "Rookery",
+                                                      Rookery=="NR" ~ "Non-rookery",
+                                                      Rookery=="Blank" ~ "Blank",
+                                                      Rookery=="Practice" ~ "Practice"),
+                                    Site=case_when(Site=="HI" ~ "Hicks Caye",
+                                                   Site=="TA" ~ "Turneffe Atoll",
+                                                   Site=="DC" ~ "Drowned Caye",
+                                                   Site=="Practice" ~ "Practice",
+                                                   Site=="Extraction" ~ "Extraction",
+                                                   Site=="Field" ~ "Field",
+                                                   Site=="Lab" ~ "Lab"),
+                                    Side=case_when(Side=="L" ~ "Leeward",
+                                                   Side=="W" ~ "Windward"))
+
+sample_data(ps.troph) <- samplelist
+```
+
+```{r}
+ggplot2::theme_set(theme_cowplot() + theme(
+  legend.position = "bottom",
+  panel.border = element_rect(color='black'),
+  legend.box.margin = margin(5,5,5,5),
+  legend.spacing = unit(0,"pt"),
+  plot.title = element_text(face="bold"),
+  plot.caption = element_text(face="italic"),
+  text = element_text(size=(15),family="Times"),
+  legend.key.height = unit(10,"pt"),
+  legend.key.width = unit(10,"pt")
+))
+```
+
+# Blanks  
+
+Make a phyloseq object of only the blanks. How many sequences are in each? 
+```{r}
+ps.blanks <- ps.troph %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
+
+blank.asvs <- taxa_names(ps.blanks)
+
+ps.blanks 
+sample_sums(ps.blanks) %>% sort()
+```
+
+## Percent of sequences/ASVs  
+How many ASVs are in the blanks?  
+```{r}
+length(blank.asvs)
+```
+What percent of taxa do those ASVs comprise?  
+```{r}
+ntaxa(prune_taxa(taxa_names(ps)%in%blank.asvs,ps)) / ntaxa(ps) * 100
+```
+5.43% of taxa    
+
+What percent of sequences do those ASVs comprise?  
+```{r}
+sum(taxa_sums(prune_taxa(taxa_names(ps)%in%blank.asvs,ps))) / sum(taxa_sums(ps)) * 100
+```
+71.15% of the sequences  
+
+And how many of those are in the blank samples themselves?  
+```{r}
+sum(taxa_sums(ps.blanks)) / sum(taxa_sums(ps)) * 100
+
+```
+<1% of ASVs are found in the blanks
+
+We want to identify what taxa are in the blanks, and whether it's better to remove all blank ASVs from the dataset or do some other method.  
+
+## What taxa are in blanks  
+Are these useful/biologically relevant taxa? Or are they contaminants like human, feline, canine DNA?   
+```{r}
+get_taxa_unique(ps.blanks,"Species")
+```
+Many of these are fisheries-relevant or otherwise target fish species.  
+
+So before removing them, we should take a look at what the best way to remove them would be.   
+
+## Compare blanks with high/low sample sums  
+Is there much of a difference in ASVs that are found in blanks with a higher or lower number of sequences?   
+```{r}
+x <- prune_samples(sample_sums(ps.blanks)<100, #get names of asvs in blanks with less than 100 sequences  
+                   ps.blanks) %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>% 
+  taxa_names() 
+
+y <- prune_samples(sample_sums(ps.blanks)>100, #get names of asvs in blanks with more than 100 sequences  
+                   ps.blanks) %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>% 
+  taxa_names() 
+
+y[!y%in%x] #how many asvs are only in the >100 dataset
+x[!x%in%y] #how many asvs are only in the <100 dataset  
+```
+
+Not really. Looking below, when we prune the dataset to only the blank ASVs, the spread is pretty similar regardless of whether they are from blanks with high or low abundance.  
+```{r}
+sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%x,.)) %>% summary()
+sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%y,.)) %>% summary()
+```
+compared to the blanks:  
+```{r}
+sample_sums(ps.blanks) %>% summary()
+```
+We are losing some taxa with pretty high abundances if we were to remove all ASVs found in the blanks.  
+
+## Compare taxa before and after blank removal   
+When we remove the ASVs from the blanks, it only removes the specific sequence. There could be other ASVs that are assigned to the same taxa, which would make losing those high-abundance ASVs more palatable. Here we are going to get the list of species found in the blanks, and compare sample sums of those species before and after removal. If the sample sums remain high/similar, then removing the specific ASVs found in the blanks are unlikely to have strong negative effects.   
+
+However, this isn't what we find. Removal of blank ASVs isn't compensated for with other ASVs, and the number of sequences still assigned to those taxa drops dramatically.     
+```{r}
+ps.troph %>%  #sample sums when subset to only species in the blanks
+  subset_taxa(.,Species%in%(get_taxa_unique(ps.blanks,"Species"))) %>% 
+  sample_sums() %>% summary()
+
+(ps.troph %>% prune_taxa(!taxa_names(.)%in%taxa_names(ps.blanks),.)) %>%  #sample sums when subset to only species in the blanks
+  subset_taxa(.,Species%in%(get_taxa_unique(ps.blanks,"Species"))) %>% 
+  sample_sums() %>% summary()
+```
+
+## Remove blanks  
+Okay, so we have decided that carte blanche removing the ASVs that are found in our blanks would result in:  
+1. *Removing important taxa* (species assigned to those ASVs are fish)  
+2. *Seriously reducing the occurrence of key species in the samples* (other ASVs are not assigned to the same fish species with similar frequency)  
+
+And indeed this is a strategy that is generally seen as overly cautious and likely to remove biologically relevant data. (e.g., QIIME2 documentation, Nguyen et al., 2015 )
+
+We could remove the number of sequences found in the blanks from each sample (again, see Nguyen et al., 2015)
+Or remove any ASVs below a certain relative abundance threshold (see background in Davis et al., 2018)
+Or use decontam R package, which uses the following principles:   
+Sequences from contaminating taxa are likely to have frequencies that inversely correlate with sample DNA concentration [8, 14, 16, 30] and (2) sequences from contaminating taxa are likely to have higher prevalence in control samples than in true samples  
+
+### Prune trophic ps  
+Remove samples with less than 
+```{r}
+prune.ps.troph <- ps.troph %>% 
+  prune_samples(sample_sums(.)>50,.) %>% 
+  prune_taxa(!taxa_names(.)%in%blank.otus,.) %>% 
+  subset_samples(.,Rookery!='Blank' & Rookery != 'Practice') 
+
+ps.troph
+prune.ps.troph
+```
+
+```{r}
+prune.ps.troph.melt <- psmelt(prune.ps.troph)
+prune.ps.troph.melt.rel <- psmelt(prune.ps.troph %>% transform_sample_counts(function(x) x/sum(x)))
+prune.ps.troph.pa <- prune.ps.troph %>% transform_sample_counts(., function(abund) 1*(abund > 0))
+```
+
+```{r}
+tab <- otu_table(prune.ps.troph) %>% as.matrix() %>% as.data.frame() %>% t()
+```
+
+```{r}
+specnumber(tab) %>% range()
+
+specaccum(tab)
+rarecurve(tab,)
+```
+
+# Analysis  
+
+## Counts
+```{r}
+jacc.dist <- distance(prune.ps.troph,method='jaccard')
+jacc.ord <- ordinate(prune.ps.troph,distance = jacc.dist)
+
+plot_ordination(prune.ps.troph,jacc.ord,color="Rookery") + facet_wrap(~Site) 
+```
+
+## Presence/absence  
+```{r}
+jacc.pa.dist <- distance(prune.ps.troph.pa,method='jaccard')
+jacc.pa.ord <- ordinate(prune.ps.troph.pa,distance = jacc.pa.dist)
+
+plot_ordination(prune.ps.troph.pa,jacc.pa.ord,color="Rookery") + facet_wrap(~Site) 
+```
+## Varpart() 
+Laporte et al "Variation partitioning is a method using coefficient of determination to fraction the variation of a response matrix into four fractions. two of these fractions are the part of the variation exclusively explained by one of the two explanatory variables, one is the proportion shared by the two explanatory variables and the last one is the part non-explained by the model. The explained proportion was compared to document the relative importance of variation in species community amonge sampling sites and time periods, while the proportion unexplained by the model was used to rank the power of transformation data"  
+So we can use this variation partitioning to look at which dataframes have the lowest residual R2 values using our explanatory variables AND to identify what variables are likely to have the highest effect  
+```{r varpart_genus}
+VP <- varpart(jacc.dist, #t(otu_table(prune.ps.troph)),
+              ~Site, ~Trip, ~Rookery, 
+              data=(as.data.frame(as.matrix(sample_data(prune.ps.troph))))
+              )
+VP
+plot(VP)
+```
+
+## Variance test  
+### Normality and significance: adonis and homogeneity of dispersion  
+We calculate a distance matrix (DistMatrix) using bray-curtis distance. Because the taxa in each sample in the datasets was converted to presence/absence, when we combined samples overall we can use that as a proxy for 'count'  
+
+In order to be confident in an ordination, we need to make sure that the assumptions are being met. To use tests based on normally distributed data, we will look at the distance matrix and test homogeneity of variance with betadisper() and permutest()  
+
+insignificant betadisper and permutest results mean we must fail to reject the null hypothesis that our groups have the same dispersions and can be more confident in the adonis results.  
+
+PERMANOVA=adonis  
+permanova is the non-parametric alternative to MANOVA/ANOVA
+https://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html#permanova  
+
+ADONIS and homogeneity of dispersion test for SiteType with the following formula:  
+DistMatrix~SiteType*Season+Tide+Sal_ppt
+```{r bray_dist_gen}
+gen.pa.bray.dist <- vegdist(t(otu_table(gen.pa.ps)
+    ),method="bray")
+```
+```{r bray_dist_fam}
+fam.pa.bray.dist <- vegdist(t(otu_table(fam.pa.ps)
+    ),method="bray")
+#fam.pa.bray.dist <- distance(fam.pa.ps, method = "bray") same results
+```
+```{r homog_dispersion_bray}
+# Homogeneity of dispersion test
+beta.st <- betadisper(fam.pa.bray.dist, fam.env$SiteType)
+beta.sea <- betadisper(fam.pa.bray.dist, fam.env$Season)
+beta.sal <- betadisper(fam.pa.bray.dist, fam.env$Sal_ppt)
+beta.tid <- betadisper(fam.pa.bray.dist, fam.env$Tide)
+beta.si <- betadisper(fam.pa.bray.dist, fam.env$Site)
+permutest(beta.st)
+permutest(beta.sea)
+permutest(beta.sal)
+permutest(beta.tid)
+permutest(beta.si)
+```
+site type has homogeneity of dispersion, but site does not. I'm going to keep on without doing a further transformation because I'm not planning on looking at site, but if I do decide to come back to it I'll need to remember to transform my data.    
+Salinity is also not equally dispersed, but like I wouldn't expect it to be. There's only a small range of salinities in our area
+Sisgsaard 2021 did not meet assumption of homogeneity of dispersion using Raup-Crick distance, so they used presence-absence data which was then transformed with an inverse normal transformation  
+```{r permanova_fam_bray}
+fam.pa.bray.adonis <- vegan::adonis(fam.pa.bray.dist~SiteType+Season+Tide+Sal_ppt,fam.env,perm=999)
+fam.pa.bray.adonis
+```
+```{r jaccard_dist_fam}
+fam.pa.jaccard.dist <- vegdist(t(otu_table(fam.pa.ps)
+    ),method="jaccard")
+```
+```{r homog_dispersion_jaccard}
+# Homogeneity of dispersion test
+beta.st <- betadisper(fam.pa.jaccard.dist, fam.env$SiteType)
+beta.sea <- betadisper(fam.pa.jaccard.dist, fam.env$Season)
+beta.sal <- betadisper(fam.pa.jaccard.dist, fam.env$Sal_ppt)
+beta.tid <- betadisper(fam.pa.jaccard.dist, fam.env$Tide)
+beta.si <- betadisper(fam.pa.jaccard.dist, fam.env$Site)
+permutest(beta.st)
+permutest(beta.sea)
+permutest(beta.sal)
+permutest(beta.tid)
+permutest(beta.si)
+```
+Similarly to the bray-curtis dissimilarity, site and salinity with jaccard distance do not have homogeneity of dispersion but the rest do
+```{r permanova_fam_jaccard}
+fam.pa.jaccard.adonis <- vegan::adonis(fam.pa.jaccard.dist~SiteType+Season+Tide+Sal_ppt,fam.env,perm=999)
+fam.pa.jaccard.adonis
+```
+permutest is not significant (barely), so we are good to go  
+Additionally, the interaction term isn't significant so we don't need to keep that  
+
+a significant p-value tells us that our adonis test is significant so we can reject the null hypothesis that our sites have the same centroid. We see that Site Type and Season are both significant with this test.    
+
+However, I also want to look at whether there is a difference between the site types if you break it down by (estimated) trophic level!  
+I was originally doing this with individual datasets but pulling things out of phyloseq seem to have really weird effects.  
+So we will look at the dataset with all available trophic levels (so we filter out any genera that were not assigned trophic levels)
+```{r adonis_T}
+nc.T.pa.bray <- vegan::vegdist(t(otu_table(gen.pa.ps %>% subset_taxa(.,!is.na(TrophicGuildNumber)))), method = "bray")
+T.env <- as.matrix(sample_data(gen.pa.ps %>% subset_taxa(.,!is.na(TrophicGuildNumber)))) %>% as.data.frame()
+
+beta <- betadisper(nc.T.pa.bray,T.env$SiteType)
+permutest(beta)
+
+nc.T.pa.bray.adonis <- vegan::adonis(nc.T.pa.bray~SiteType+Season+Tide+Sal_ppt,data=T.env,perm=999)
+nc.T.pa.bray.adonis
+```
+Both of these show some significant differences linked to Site type and season, and the trophic database is marginally linked to tidal height.  
+
+# Session Info   
+```{r}
+sessionInfo()
+```
+
