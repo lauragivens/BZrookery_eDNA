@@ -11,6 +11,7 @@ library(tidyverse)
 library(ggplot2)
 library(cowplot)
 library(vegan)
+library(decontam)
 ```
 
 Load data  
@@ -37,8 +38,13 @@ troph_edit <- taxa_troph %>% mutate(.,
 
 tax_table(ps.troph) <- as.matrix(troph_edit)
 
+samplelist[samplelist==""] <- NA
+samplelist[samplelist=="."] <- NA
 samplelist$Date <- lubridate::dmy(samplelist$Date)
-samplelist$Month <- lubridate::month(samplelist$Date)
+samplelist$Quant_nguL <- as.numeric(samplelist$Quant_nguL) %>% round(digits = 2)
+samplelist$Quant_nguL[is.na(samplelist$Quant_nguL)] <- 0
+samplelist$Rookery[is.na(samplelist$Rookery)] <- "Blank"
+#samplelist$Month <- lubridate::month(samplelist$Date)
 samplelist <- samplelist %>% mutate(.,
                                     Rookery=case_when(Rookery=="R" ~ "Rookery",
                                                       Rookery=="NR" ~ "Non-rookery",
@@ -52,23 +58,10 @@ samplelist <- samplelist %>% mutate(.,
                                                    Site=="Field" ~ "Field",
                                                    Site=="Lab" ~ "Lab"),
                                     Side=case_when(Side=="L" ~ "Leeward",
-                                                   Side=="W" ~ "Windward"))
+                                                   Side=="W" ~ "Windward")
+                                    )
 
 sample_data(ps.troph) <- samplelist
-```
-
-```{r}
-ggplot2::theme_set(theme_cowplot() + theme(
-  legend.position = "bottom",
-  panel.border = element_rect(color='black'),
-  legend.box.margin = margin(5,5,5,5),
-  legend.spacing = unit(0,"pt"),
-  plot.title = element_text(face="bold"),
-  plot.caption = element_text(face="italic"),
-  text = element_text(size=(15),family="Times"),
-  legend.key.height = unit(10,"pt"),
-  legend.key.width = unit(10,"pt")
-))
 ```
 
 # Blanks  
@@ -170,152 +163,151 @@ And indeed this is a strategy that is generally seen as overly cautious and like
 We could remove the number of sequences found in the blanks from each sample (again, see Nguyen et al., 2015)
 Or remove any ASVs below a certain relative abundance threshold (see background in Davis et al., 2018)
 Or use decontam R package, which uses the following principles:   
-Sequences from contaminating taxa are likely to have frequencies that inversely correlate with sample DNA concentration [8, 14, 16, 30] and (2) sequences from contaminating taxa are likely to have higher prevalence in control samples than in true samples  
+Sequences from contaminating taxa are likely to have frequencies that inversely correlate with sample DNA concentration [8, 14, 16, 30] and (2) sequences from contaminating taxa are likely to have higher prevalence in control samples than in true samples   
 
-### Prune trophic ps  
+So using decontam package...    
+_Using the “frequency” method_, the distribution of the frequency of each sequence feature as a function of the input DNA concentration is used to identify contaminants.  
+_Using the “prevalence” method_, the prevalence (presence/absence across samples) of each sequence feature in true positive samples is compared to the prevalence in negative controls to identify contaminants.  
+
+We’ll summarize the sample variable that holds the negative control information as a logical variable, with TRUE for control samples, as that is the form required by isContaminant.  
+```{r}
+ps.decontam <- ps.troph %>% subset_samples(Site != "Practice")
+sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Field"
+sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Lab"
+sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Extraction"
+
+sample_data(ps.decontam)$Quant_nguL[sample_data(ps.decontam)$Quant_nguL==0] <- 0.000000001
+# don't want to include the PCR blanks  
+```
+```{r}
+contamdf.freq <- isContaminant((ps.decontam %>% subset_samples(Quant_nguL>0)), method="frequency", conc="Quant_nguL")
+contamdf.prev <- isContaminant(ps.decontam, method="prevalence", neg="is.neg")
+```
+
+#### Decontam: Concentration-based  
+What contaminants were identified based on DNA concentration?   
+```{r}
+contamdf.freq %>% filter(contaminant==TRUE)
+contamnames.freq <- rownames(contamdf.freq %>% filter(contaminant==TRUE))
+```
+What taxa are those assigned to?  
+```{r}
+ps.decontam %>% prune_taxa(taxa_names(.)%in%contamnames.freq,.) %>% tax_table() %>% as.matrix() %>% as.data.frame() %>% .[2:8]
+```
+
+What does that look like?  
+```{r}
+plot_frequency((ps.decontam %>% subset_samples(Quant_nguL>0)), 
+               contamnames.freq, conc="Quant_nguL") + 
+  xlab("DNA Concentration (ng/uL)")
+```
+"In this plot the dashed black line shows the model of a noncontaminant sequence feature for which frequency is expected to be independent of the input DNA concentration. The red line shows the model of a contaminant sequence feature, for which frequency is expected to be inversely proportional to input DNA concentration, as contaminating DNA will make up a larger fraction of the total DNA in samples with very little total DNA. "  
+So a falsely identified contaminant would not follow the red line very well  
+
+#### Decontam: Prevalence-based  
+What contaminants were identified based on prevalence?   
+```{r}
+contamnames.prev <- rownames(contamdf.prev %>% filter(contaminant==TRUE))
+contamdf.prev %>% filter(contaminant==TRUE)
+```
+What taxa do those correspond to?  
+```{r}
+ps.decontam %>% prune_taxa(taxa_names(.)%in%contamnames.prev,.) %>% tax_table() %>% as.matrix() %>% as.data.frame() %>% .[2:8]
+```
+
+Visualize how many times sequences identified as contaminants were found in negatives versus positives  
+```{r}
+ps.decontam.pa <- transform_sample_counts(ps.decontam, function(abund) 1*(abund>0))
+ps.decontam.pa.neg <- prune_samples(sample_data(ps.decontam.pa)$Rookery == "Blank", ps.decontam.pa)
+ps.decontam.pa.pos <- prune_samples(sample_data(ps.decontam.pa)$Rookery != "Blank", ps.decontam.pa)
+# Make data.frame of prevalence in positive and negative samples
+df.pa <- data.frame(pa.pos=taxa_sums(ps.decontam.pa.pos), pa.neg=taxa_sums(ps.decontam.pa.neg),
+                      contaminant=contamdf.prev$contaminant)
+ggplot(data=df.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point(position='jitter') +
+  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+```
+
+# Removal  
+So now that we've looked at that, we're going to use a combination of both methods to remove contaminant ASVs from the ps object  
+(method=combined,minimum, or both)
+Combined = probabilities of both are combined with Fisher's method to identify contaminants
+Minimum = minimum of both probabilites is used to identify contaminants
+Either = contaminants are called if they are identified by either method  
+Both = contaminants are called if they are identified by both methods  
+```{r}
+contamdf <- isContaminant(ps.decontam, method="combined", neg="is.neg", conc="Quant_nguL")
+contamdf.names <- row.names(contamdf %>% filter(contaminant==TRUE))
+contamdf %>% filter(contaminant==TRUE)
+```
+
+What was kept from the separate versions?  
+Prevalence: 
+```{r}
+contamdf.names[contamdf.names%in%contamnames.prev]
+```
+Frequency: 
+```{r}
+contamdf.names[contamdf.names%in%contamnames.freq]
+```
+
+Curious if the one that was kept was the ASV with really high prevalence in the negative controls  
+```{r}
+df.comb.pa <- data.frame(pa.pos=taxa_sums(ps.decontam.pa.pos), 
+                         pa.neg=taxa_sums(ps.decontam.pa.neg),
+                         contaminant=contamdf$contaminant) #new data frame with the combined contaminants included
+
+check <- contamdf %>% select(contaminant) 
+head(check)
+check$contaminant[rownames(check)!="sq2489"] <- FALSE #only keep the one that was kept from prevanlence  
+
+ggplot(data=df.comb.pa, aes(x=pa.neg, y=pa.pos, color=check$contaminant)) + geom_point(position='jitter') +
+  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+```
+Weirdly enough, no that wasn't the one that decontam decided was a contaminant.  
+
+Just for another double check, what does the plot look like for the combined decontam df?  
+```{r}
+ggplot(data=df.comb.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point(position='jitter') +
+  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+```
+
+
+What percent of taxa do those ASVs comprise?  
+```{r}
+length(contamdf.names) / ntaxa(ps) * 100
+```
+0.603% of taxa     
+
+What percent of sequences do those ASVs comprise?  
+```{r}
+sum(taxa_sums(prune_taxa(taxa_names(ps)%in%contamdf.names,ps))) / sum(taxa_sums(ps)) * 100
+```
+0.29% of the sequences  
+
+```{r}
+sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%contamdf.names,.)) %>% summary()
+```
+
 Remove samples with less than 
 ```{r}
 prune.ps.troph <- ps.troph %>% 
   prune_samples(sample_sums(.)>50,.) %>% 
-  prune_taxa(!taxa_names(.)%in%blank.otus,.) %>% 
-  subset_samples(.,Rookery!='Blank' & Rookery != 'Practice') 
+  prune_taxa(!taxa_names(.)%in%contamdf.names,.) %>% 
+  subset_samples(., Rookery != 'Practice') 
 
 ps.troph
 prune.ps.troph
 ```
 
-```{r}
-prune.ps.troph.melt <- psmelt(prune.ps.troph)
-prune.ps.troph.melt.rel <- psmelt(prune.ps.troph %>% transform_sample_counts(function(x) x/sum(x)))
-prune.ps.troph.pa <- prune.ps.troph %>% transform_sample_counts(., function(abund) 1*(abund > 0))
-```
-
-```{r}
-tab <- otu_table(prune.ps.troph) %>% as.matrix() %>% as.data.frame() %>% t()
-```
-
-```{r}
-specnumber(tab) %>% range()
-
-specaccum(tab)
-rarecurve(tab,)
-```
-
-# Analysis  
-
-## Counts
-```{r}
-jacc.dist <- distance(prune.ps.troph,method='jaccard')
-jacc.ord <- ordinate(prune.ps.troph,distance = jacc.dist)
-
-plot_ordination(prune.ps.troph,jacc.ord,color="Rookery") + facet_wrap(~Site) 
-```
-
-## Presence/absence  
-```{r}
-jacc.pa.dist <- distance(prune.ps.troph.pa,method='jaccard')
-jacc.pa.ord <- ordinate(prune.ps.troph.pa,distance = jacc.pa.dist)
-
-plot_ordination(prune.ps.troph.pa,jacc.pa.ord,color="Rookery") + facet_wrap(~Site) 
-```
-## Varpart() 
-Laporte et al "Variation partitioning is a method using coefficient of determination to fraction the variation of a response matrix into four fractions. two of these fractions are the part of the variation exclusively explained by one of the two explanatory variables, one is the proportion shared by the two explanatory variables and the last one is the part non-explained by the model. The explained proportion was compared to document the relative importance of variation in species community amonge sampling sites and time periods, while the proportion unexplained by the model was used to rank the power of transformation data"  
-So we can use this variation partitioning to look at which dataframes have the lowest residual R2 values using our explanatory variables AND to identify what variables are likely to have the highest effect  
-```{r varpart_genus}
-VP <- varpart(jacc.dist, #t(otu_table(prune.ps.troph)),
-              ~Site, ~Trip, ~Rookery, 
-              data=(as.data.frame(as.matrix(sample_data(prune.ps.troph))))
-              )
-VP
-plot(VP)
-```
-
-## Variance test  
-### Normality and significance: adonis and homogeneity of dispersion  
-We calculate a distance matrix (DistMatrix) using bray-curtis distance. Because the taxa in each sample in the datasets was converted to presence/absence, when we combined samples overall we can use that as a proxy for 'count'  
-
-In order to be confident in an ordination, we need to make sure that the assumptions are being met. To use tests based on normally distributed data, we will look at the distance matrix and test homogeneity of variance with betadisper() and permutest()  
-
-insignificant betadisper and permutest results mean we must fail to reject the null hypothesis that our groups have the same dispersions and can be more confident in the adonis results.  
-
-PERMANOVA=adonis  
-permanova is the non-parametric alternative to MANOVA/ANOVA
-https://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html#permanova  
-
-ADONIS and homogeneity of dispersion test for SiteType with the following formula:  
-DistMatrix~SiteType*Season+Tide+Sal_ppt
-```{r bray_dist_gen}
-gen.pa.bray.dist <- vegdist(t(otu_table(gen.pa.ps)
-    ),method="bray")
-```
-```{r bray_dist_fam}
-fam.pa.bray.dist <- vegdist(t(otu_table(fam.pa.ps)
-    ),method="bray")
-#fam.pa.bray.dist <- distance(fam.pa.ps, method = "bray") same results
-```
-```{r homog_dispersion_bray}
-# Homogeneity of dispersion test
-beta.st <- betadisper(fam.pa.bray.dist, fam.env$SiteType)
-beta.sea <- betadisper(fam.pa.bray.dist, fam.env$Season)
-beta.sal <- betadisper(fam.pa.bray.dist, fam.env$Sal_ppt)
-beta.tid <- betadisper(fam.pa.bray.dist, fam.env$Tide)
-beta.si <- betadisper(fam.pa.bray.dist, fam.env$Site)
-permutest(beta.st)
-permutest(beta.sea)
-permutest(beta.sal)
-permutest(beta.tid)
-permutest(beta.si)
-```
-site type has homogeneity of dispersion, but site does not. I'm going to keep on without doing a further transformation because I'm not planning on looking at site, but if I do decide to come back to it I'll need to remember to transform my data.    
-Salinity is also not equally dispersed, but like I wouldn't expect it to be. There's only a small range of salinities in our area
-Sisgsaard 2021 did not meet assumption of homogeneity of dispersion using Raup-Crick distance, so they used presence-absence data which was then transformed with an inverse normal transformation  
-```{r permanova_fam_bray}
-fam.pa.bray.adonis <- vegan::adonis(fam.pa.bray.dist~SiteType+Season+Tide+Sal_ppt,fam.env,perm=999)
-fam.pa.bray.adonis
-```
-```{r jaccard_dist_fam}
-fam.pa.jaccard.dist <- vegdist(t(otu_table(fam.pa.ps)
-    ),method="jaccard")
-```
-```{r homog_dispersion_jaccard}
-# Homogeneity of dispersion test
-beta.st <- betadisper(fam.pa.jaccard.dist, fam.env$SiteType)
-beta.sea <- betadisper(fam.pa.jaccard.dist, fam.env$Season)
-beta.sal <- betadisper(fam.pa.jaccard.dist, fam.env$Sal_ppt)
-beta.tid <- betadisper(fam.pa.jaccard.dist, fam.env$Tide)
-beta.si <- betadisper(fam.pa.jaccard.dist, fam.env$Site)
-permutest(beta.st)
-permutest(beta.sea)
-permutest(beta.sal)
-permutest(beta.tid)
-permutest(beta.si)
-```
-Similarly to the bray-curtis dissimilarity, site and salinity with jaccard distance do not have homogeneity of dispersion but the rest do
-```{r permanova_fam_jaccard}
-fam.pa.jaccard.adonis <- vegan::adonis(fam.pa.jaccard.dist~SiteType+Season+Tide+Sal_ppt,fam.env,perm=999)
-fam.pa.jaccard.adonis
-```
-permutest is not significant (barely), so we are good to go  
-Additionally, the interaction term isn't significant so we don't need to keep that  
-
-a significant p-value tells us that our adonis test is significant so we can reject the null hypothesis that our sites have the same centroid. We see that Site Type and Season are both significant with this test.    
-
-However, I also want to look at whether there is a difference between the site types if you break it down by (estimated) trophic level!  
-I was originally doing this with individual datasets but pulling things out of phyloseq seem to have really weird effects.  
-So we will look at the dataset with all available trophic levels (so we filter out any genera that were not assigned trophic levels)
-```{r adonis_T}
-nc.T.pa.bray <- vegan::vegdist(t(otu_table(gen.pa.ps %>% subset_taxa(.,!is.na(TrophicGuildNumber)))), method = "bray")
-T.env <- as.matrix(sample_data(gen.pa.ps %>% subset_taxa(.,!is.na(TrophicGuildNumber)))) %>% as.data.frame()
-
-beta <- betadisper(nc.T.pa.bray,T.env$SiteType)
-permutest(beta)
-
-nc.T.pa.bray.adonis <- vegan::adonis(nc.T.pa.bray~SiteType+Season+Tide+Sal_ppt,data=T.env,perm=999)
-nc.T.pa.bray.adonis
-```
-Both of these show some significant differences linked to Site type and season, and the trophic database is marginally linked to tidal height.  
-
 # Session Info   
+```{r}
+saveRDS(prune.ps.troph,paste0(dir_results,"/prune.ps.troph.rds"))
+```
+
+```{r}
+save.image(paste0(dir_data,'/07_Blanks.RData'))
+```
+
 ```{r}
 sessionInfo()
 ```
