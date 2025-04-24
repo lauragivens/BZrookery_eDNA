@@ -81,9 +81,9 @@ cols_asv <- word(colnames(curated_asv),sep = "_",end=3)
 colnames(curated_asv) <- cols_asv
 
 # upload metadata
-samplelist <- read.csv(paste0(dir_man,"/TotalSampleList-BZ.csv"))
-rownames(samplelist) <- samplelist$SampleNameLong
-samplelist$SampleNameLong <- NULL
+samplelist <- read.csv(paste0(dir_man,"/Metadata_BZrookery.csv"))
+rownames(samplelist) <- samplelist$SampleName_Long
+samplelist$SampleName_Long <- NULL
 
 # assemble ps object
 otu <- otu_table((curated_asv),taxa_are_rows = TRUE)
