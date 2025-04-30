@@ -2,7 +2,7 @@
 title: "Remove blanks"
 output: html_output
 ---
-
+(save as _output: html_notebook_ for updated nb.html doc; but it will *only* save output that in the viewer pane/window, it will not rerun chunks to generate new output.)  
 # Load  
 Load libraries  
 ```{r,message=FALSE}
