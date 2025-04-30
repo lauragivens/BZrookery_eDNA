@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: html_document
 ---
 
 # Load  
@@ -27,6 +27,10 @@ taxa_troph <- readRDS(paste0(dir_results,"/taxtable.wtroph.rds"))
 curated_lulu <- readRDS(paste0(dir_results,'/lulu-clustertable.rds'))
 curated_asv <- readRDS(paste0(dir_results,"/asvtable.rds"))
 samplelist <- readRDS(paste0(dir_results,'/metadata.rds'))
+```
+Alternatively, load working environment:  
+```{r load_env}
+load(paste0(dir_data,'/07_Blanks.RData'))
 ```
 
 ```{r}
@@ -153,7 +157,9 @@ ps.troph %>%  #sample sums when subset to only species in the blanks
   sample_sums() %>% summary()
 ```
 
-## Remove blanks  
+# Decontamination  
+
+## Identify contaminants  
 Okay, so we have decided that carte blanche removing the ASVs that are found in our blanks would result in:  
 1. *Removing important taxa* (species assigned to those ASVs are fish)  
 2. *Seriously reducing the occurrence of key species in the samples* (other ASVs are not assigned to the same fish species with similar frequency)  
@@ -227,8 +233,11 @@ ggplot(data=df.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point(posi
   xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
 ```
 
+
 # Removal  
-So now that we've looked at that, we're going to use a combination of both methods to remove contaminant ASVs from the ps object  
+
+## Contaminants  
+We are first going to use a combination of both decontam methods to remove contaminant ASVs from the ps object  
 (method=combined,minimum, or both)
 Combined = probabilities of both are combined with Fisher's method to identify contaminants
 Minimum = minimum of both probabilites is used to identify contaminants
@@ -290,18 +299,141 @@ sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%contamdf.names,.)) %>% summ
 
 Remove samples with less than 
 ```{r}
-prune.ps.troph <- ps.troph %>% 
-  prune_samples(sample_sums(.)>50,.) %>% 
-  prune_taxa(!taxa_names(.)%in%contamdf.names,.) %>% 
-  subset_samples(., Rookery != 'Practice') 
+decontam.ps.troph <- ps.troph %>% 
+  #prune_samples(sample_sums(.)>50,.) %>% 
+  prune_taxa(!taxa_names(.)%in%contamdf.names,.)#%>% 
+  #subset_samples(., Rookery != 'Practice') 
 
 ps.troph
-prune.ps.troph
+decontam.ps.troph
 ```
+## Blanks  
+After decontamination, we are next going to get a list of ASVs that appear in the blanks and their quantities, and remove that number from each sample from that site.    
+```{r}
+ps.blanks <- decontam.ps.troph %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
+```
+
+We have field blanks, lab blanks, extraction blanks, and PCR blanks.  
+```{r}
+ps.blanks 
+ntaxa(ps.blanks)
+sample_sums(ps.blanks) %>% sort()
+```
+Remove ASVs from PCR blanks from all samples  
+PCR blanks:  
+```{r}
+ps.blanks %>% subset_samples(is.na(Site)) %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table()
+```
+
+Remove ASVs from extraction blanks from their respective extraction day  
+```{r}
+ps.blanks %>% subset_samples(Site=="Extraction")  %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table()
+```
+
+Remove ASVs from field and lab blanks from their respective sample days   
+```{r}
+ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field")  %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table()
+```
+```{r}
+ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field") %>% sample_names()
+```
+
+
+Going in order:  
+```{r}
+prune.decontam.ps.troph <- decontam.ps.troph
+```
+
+### Field and lab blanks   
+```{r}
+sample_events <- ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field") %>% get_variable(.,"Date") %>% unique()
+```
+Test:
+```{r,eval=FALSE}
+ a <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[1] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[1] & Rookery == "Blank") %>% sample_names() #get sample names of blanks from that trip 
+  
+  #before:
+  #otudf[b,a]
+  #blanks:
+  #otudf[b,c]
+  #after
+  #otudf[b,a] %>% mutate(across(all_of(a),~.x - otudf[b,c])) %>% pmax(.,0) 
+  
+
+#for (i in 1:length(sample_events)) { #for each sampling day 
+#  a <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[i] & Rookery != "Blank") 
+#  print(a)
+#}
+
+
+for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- prune_samples(sample_names(prune.decontam.ps.troph)==c[p], #get only the blank sample we're working with
+                     prune.decontam.ps.troph) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names() #get seqid of asvs in neg control 
+
+  if (length(b)>0){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune.decontam.ps.troph) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
+     otu_table(prune.decontam.ps.troph) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+}
+
+#in neg
+otu_table(decontam.ps.troph)[b[1],c]
+
+#before
+otu_table(decontam.ps.troph)[b[1],a] #samples from that sampling event
+
+#after
+otu_table(prune.decontam.ps.troph)[b[1],a]
+```
+
+```{r}
+for (n in 1:length(sample_events)) { #for each sampling day 
+ 
+  a <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[n] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[n] & Rookery == "Blank") %>% sample_names()
+
+for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- prune_samples(sample_names(prune.decontam.ps.troph)==c[p], #get only the blank sample we're working with
+                     prune.decontam.ps.troph) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names() #get seqid of asvs in neg control 
+
+  if (length(b)>0){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune.decontam.ps.troph) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
+     otu_table(prune.decontam.ps.troph) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+}
+  
+}
+
+```
+Check
+```{r}
+#in neg
+otu_table(decontam.ps.troph)[b[1],c]
+
+#before
+otu_table(decontam.ps.troph)[b[1],a] #samples from that sampling event
+
+#after
+otu_table(prune.decontam.ps.troph)[b[1],a]
+```
+
 
 # Session Info   
 ```{r}
-saveRDS(prune.ps.troph,paste0(dir_results,"/prune.ps.troph.rds"))
+saveRDS(decontam.ps.troph,paste0(dir_results,"/decontam.ps.troph.rds"))
 ```
 
 ```{r}
