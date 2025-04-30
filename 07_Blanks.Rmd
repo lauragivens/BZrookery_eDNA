@@ -1,6 +1,6 @@
 ---
-title: "R Notebook"
-output: html_document
+title: "Remove blanks"
+output: html_output
 ---
 
 # Load  
@@ -45,9 +45,9 @@ tax_table(ps.troph) <- as.matrix(troph_edit)
 samplelist[samplelist==""] <- NA
 samplelist[samplelist=="."] <- NA
 samplelist$Date <- lubridate::dmy(samplelist$Date)
+samplelist$Date_Extracted <- lubridate::dmy(samplelist$Date_Extracted)
 samplelist$Quant_nguL <- as.numeric(samplelist$Quant_nguL) %>% round(digits = 2)
 samplelist$Quant_nguL[is.na(samplelist$Quant_nguL)] <- 0
-samplelist$Rookery[is.na(samplelist$Rookery)] <- "Blank"
 #samplelist$Month <- lubridate::month(samplelist$Date)
 samplelist <- samplelist %>% mutate(.,
                                     Rookery=case_when(Rookery=="R" ~ "Rookery",
@@ -60,7 +60,8 @@ samplelist <- samplelist %>% mutate(.,
                                                    Site=="Practice" ~ "Practice",
                                                    Site=="Extraction" ~ "Extraction",
                                                    Site=="Field" ~ "Field",
-                                                   Site=="Lab" ~ "Lab"),
+                                                   Site=="Lab" ~ "Lab",
+                                                   Site=="PCR" ~ "PCR"),
                                     Side=case_when(Side=="L" ~ "Leeward",
                                                    Side=="W" ~ "Windward")
                                     )
@@ -100,7 +101,6 @@ sum(taxa_sums(prune_taxa(taxa_names(ps)%in%blank.asvs,ps))) / sum(taxa_sums(ps))
 And how many of those are in the blank samples themselves?  
 ```{r}
 sum(taxa_sums(ps.blanks)) / sum(taxa_sums(ps)) * 100
-
 ```
 <1% of ASVs are found in the blanks
 
@@ -177,7 +177,7 @@ _Using the “prevalence” method_, the prevalence (presence/absence across sam
 
 We’ll summarize the sample variable that holds the negative control information as a logical variable, with TRUE for control samples, as that is the form required by isContaminant.  
 ```{r}
-ps.decontam <- ps.troph %>% subset_samples(Site != "Practice")
+ps.decontam <- ps.troph %>% subset_samples(Site != "Practice") %>% prune_samples(sample_sums(.)>0,.)
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Field"
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Lab"
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Extraction"
@@ -322,7 +322,7 @@ sample_sums(ps.blanks) %>% sort()
 Remove ASVs from PCR blanks from all samples  
 PCR blanks:  
 ```{r}
-ps.blanks %>% subset_samples(is.na(Site)) %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table()
+ps.blanks %>% subset_samples(Site=="PCR") %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table()
 ```
 
 Remove ASVs from extraction blanks from their respective extraction day  
@@ -341,7 +341,7 @@ ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field") %>% sample_names()
 
 Going in order:  
 ```{r}
-prune.decontam.ps.troph <- decontam.ps.troph
+prune_a.ps <- decontam.ps.troph
 ```
 
 ### Field and lab blanks   
@@ -350,8 +350,8 @@ sample_events <- ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field") %>% g
 ```
 Test:
 ```{r,eval=FALSE}
- a <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[1] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
-  c <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[1] & Rookery == "Blank") %>% sample_names() #get sample names of blanks from that trip 
+ a <- prune_a.ps %>% subset_samples(Date==sample_events[1] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune_a.ps %>% subset_samples(Date==sample_events[1] & Rookery == "Blank") %>% sample_names() #get sample names of blanks from that trip 
   
   #before:
   #otudf[b,a]
@@ -362,23 +362,23 @@ Test:
   
 
 #for (i in 1:length(sample_events)) { #for each sampling day 
-#  a <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[i] & Rookery != "Blank") 
+#  a <- prune_a.ps %>% subset_samples(Date==sample_events[i] & Rookery != "Blank") 
 #  print(a)
 #}
 
 
 for (p in 1:length(c)) { #for each negative control sample
    
-  b <- prune_samples(sample_names(prune.decontam.ps.troph)==c[p], #get only the blank sample we're working with
-                     prune.decontam.ps.troph) %>% 
+  b <- prune_samples(sample_names(prune_a.ps)==c[p], #get only the blank sample we're working with
+                     prune_a.ps) %>% 
     prune_taxa(taxa_sums(.)>0,.) %>% taxa_names() #get seqid of asvs in neg control 
 
   if (length(b)>0){
   for (i in 1:length(b)) { #for each seq in the neg control 
     
-     otudf <- otu_table(prune.decontam.ps.troph) %>% as.matrix() %>% as.data.frame()
+     otudf <- otu_table(prune_a.ps) %>% as.matrix() %>% as.data.frame()
      otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
-     otu_table(prune.decontam.ps.troph) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+     otu_table(prune_a.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
   }
   }
 }
@@ -390,27 +390,27 @@ otu_table(decontam.ps.troph)[b[1],c]
 otu_table(decontam.ps.troph)[b[1],a] #samples from that sampling event
 
 #after
-otu_table(prune.decontam.ps.troph)[b[1],a]
+otu_table(prune_a.ps)[b[1],a]
 ```
 
 ```{r}
 for (n in 1:length(sample_events)) { #for each sampling day 
  
-  a <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[n] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
-  c <- prune.decontam.ps.troph %>% subset_samples(Date==sample_events[n] & Rookery == "Blank") %>% sample_names()
+  a <- prune_a.ps %>% subset_samples(Date==sample_events[n] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune_a.ps %>% subset_samples(Date==sample_events[n] & Rookery == "Blank") %>% sample_names()
 
 for (p in 1:length(c)) { #for each negative control sample
    
-  b <- prune_samples(sample_names(prune.decontam.ps.troph)==c[p], #get only the blank sample we're working with
-                     prune.decontam.ps.troph) %>% 
+  b <- prune_samples(sample_names(prune_a.ps)==c[p], #get only the blank sample we're working with
+                     prune_a.ps) %>% 
     prune_taxa(taxa_sums(.)>0,.) %>% taxa_names() #get seqid of asvs in neg control 
 
   if (length(b)>0){
   for (i in 1:length(b)) { #for each seq in the neg control 
     
-     otudf <- otu_table(prune.decontam.ps.troph) %>% as.matrix() %>% as.data.frame()
+     otudf <- otu_table(prune_a.ps) %>% as.matrix() %>% as.data.frame()
      otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
-     otu_table(prune.decontam.ps.troph) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+     otu_table(prune_a.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
   }
   }
 }
@@ -427,13 +427,204 @@ otu_table(decontam.ps.troph)[b[1],c]
 otu_table(decontam.ps.troph)[b[1],a] #samples from that sampling event
 
 #after
-otu_table(prune.decontam.ps.troph)[b[1],a]
+otu_table(prune_a.ps)[b[1],a]
+```
+
+### Extraction blanks  
+```{r}
+prune_b.ps <- prune_a.ps
+ext_events <- ps.blanks %>% subset_samples(Site=="Extraction") %>% get_variable(.,"Date_Extracted") %>% unique()
+```
+```{r}
+for (n in 1:length(ext_events)) { #for each sampling day 
+ 
+  a <- prune_b.ps %>% subset_samples(Date_Extracted==ext_events[n] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune_b.ps %>% subset_samples(Date_Extracted==ext_events[n] & Rookery == "Blank") %>% sample_names()
+
+for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- tryCatch((prune_samples(sample_names(prune_b.ps)==c[p], #get only the blank sample we're working with
+                     prune_b.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names()), #get seqid of asvs in neg control 
+                           error=function(e){return(FALSE)}
+    )
+
+  if (!isFALSE(b)){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_b.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
+     otu_table(prune_b.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+}
+  
+}
+
+```
+Check
+```{r}
+#in neg
+otu_table(prune_a.ps)[b[1],c]
+
+#before
+otu_table(prune_a.ps)[b[1],a] #samples from that sampling event
+
+#after
+otu_table(prune_b.ps)[b[1],a]
+```
+
+### PCR blanks  
+```{r}
+prune_c.ps <- prune_b.ps
+pcr_events <- ps.blanks %>% subset_samples(Site=="PCR") %>% sample_names()
+```
+```{r}
+otu_table(ps.blanks %>% subset_samples(Site=="PCR") %>% prune_taxa(taxa_sums(.)>0,.)) 
+```
+Test: 
+```{r,eval=FALSE}
+#for (n in 1:length(pcr_events)) { #for each sample 
+ 
+  a <- prune_c.ps %>% subset_samples(Site!="PCR" & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- pcr_events
+
+#for (p in 1:length(c)) { #for each negative control sample
+  
+###test 1: tax names
+    b <- tryCatch((prune_samples(sample_names(prune_c.ps)==c[1], #get only the blank sample we're working with
+                     prune_c.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names()), #get seqid of asvs in neg control 
+                           error=function(e){return(FALSE)}
+    )
+###test 2: otu table
+  otudf <- otu_table(prune_c.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[1],a] <- otudf[b[1],a] %>% mutate(across(all_of(a),~.x - otudf[b[1],c[1]])) %>% pmax(.,0)
+     otu_table(prune_c.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+
+#in neg
+otudf[b[1],c]
+#before
+otu_table(prune_b.ps)[b[1],a[1:5]] #samples from that sampling event
+#after
+otudf[b[1],a[1:5]]
+#before - neg == after 
+     
+###test 3: loop seqs
+  if (!isFALSE(b)){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_c.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[1]])) %>% pmax(.,0)
+     otu_table(prune_c.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+#}
+  
+#}
+
+otudf[b,c] #remember we only did c[1] though
+#before
+otu_table(prune_b.ps)[b,a[1:5]] #samples from that sampling event
+#after
+otudf[b,a[1:5]]
+
+
+#if it works, reset
+rm(a)
+rm(b)
+rm(c)
+rm(otudf)
+prune_c.ps <- prune_b.ps
+pcr_events <- ps.blanks %>% subset_samples(Site=="PCR") %>% sample_names()
+```
+
+```{r}
+for (n in 1:length(pcr_events)) { #for each sample 
+ 
+  a <- prune_c.ps %>% subset_samples(Site!="PCR" & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- pcr_events
+
+#for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- tryCatch((prune_samples(sample_names(prune_c.ps)==c[n], #get only the blank sample we're working with
+                     prune_c.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names()), #get seqid of asvs in neg control 
+                           error=function(e){return(FALSE)}
+    )
+
+  if (!isFALSE(b)){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_c.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[n]])) %>% pmax(.,0)
+     otu_table(prune_c.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+#}
+  
+}
+
+```
+Check
+```{r}
+#in neg
+otu_table(prune_b.ps)[b,c] %>% rowSums()
+
+#before
+otu_table(prune_b.ps)[b,a[1:5]] #samples from that sampling event
+
+#after
+otu_table(prune_c.ps)[b,a[1:5]]
+```
+
+```{r}
+#in neg
+otu_table(prune_b.ps)[b,c] %>% rowSums()
+
+#before
+otu_table(prune_b.ps)[b,a[5:10]] #samples from that sampling event
+
+#after
+otu_table(prune_c.ps)[b,a[5:10]]
+```
+
+### Final
+```{r}
+prune.decontam.ps.troph <- prune_c.ps %>% subset_samples(Rookery!="Blank")
+```
+
+# Overview   
+Blanks  
+```{r}
+ps.blanks %>% plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + labs(title="ASV abundance of negative controls and blanks",x="Sample Name")
+```
+Before decontaminant removal  
+```{r}
+ps.troph %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset",x="Sample Name")
+```
+After decontaminant removal  
+```{r}
+decontam.ps.troph  %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset after decontaminant removal",x="Sample Name")
+```
+After negative control ASV removal  
+```{r}
+prune.decontam.ps.troph %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset after subtracting number of ASVs in negative controls ",x="Sample Name")
 ```
 
 
 # Session Info   
 ```{r}
 saveRDS(decontam.ps.troph,paste0(dir_results,"/decontam.ps.troph.rds"))
+
+saveRDS(prune_c.ps,paste0(dir_results,"/prune.decontam.ps.troph.keepblanks.rds"))
+saveRDS(prune.decontam.ps.troph,paste0(dir_results,"/prune.decontam.ps.troph.rds"))
 ```
 
 ```{r}
