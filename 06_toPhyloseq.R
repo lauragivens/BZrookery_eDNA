@@ -81,7 +81,7 @@ cols_asv <- word(colnames(curated_asv),sep = "_",end=3)
 colnames(curated_asv) <- cols_asv
 
 # upload metadata
-samplelist <- read.csv(paste0(dir_man,"/Metadata_BZrookery.csv"))
+samplelist <- read.csv("/Users/lauragivens/Desktop/R/BZrookery_eDNA/Metadata_BZrookery.csv")
 rownames(samplelist) <- samplelist$SampleName_Long
 samplelist$SampleName_Long <- NULL
 

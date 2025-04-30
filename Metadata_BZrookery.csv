@@ -1,156 +1,156 @@
-SampleName_Long,Quant_nguL,Month,Trip,Date,Site,Rookery,Side,Replicate,FilterNum,SampleName,SampleName_Short
-15-Aug_DCNRL_A1,7.66,August,Trip 1: Summer 2023,15-Aug-23,DC,NR,L,A,1,DCNRL A1,DCNRL
-15-Aug_DCNRL_B1,1.35,August,Trip 1: Summer 2023,15-Aug-23,DC,NR,L,B,1,DCNRL B1,DCNRL
-15-Aug_DCNRL_B2,6.04,August,Trip 1: Summer 2023,15-Aug-23,DC,NR,L,B,2,DCNRL B2,DCNRL
-15-Aug_DCNRW_A1,5.6,August,Trip 1: Summer 2023,15-Aug-23,DC,NR,W,A,1,DCNRW A1,DCNRW
-15-Aug_DCNRW_B1,10,August,Trip 1: Summer 2023,15-Aug-23,DC,NR,W,B,1,DCNRW B1,DCNRW
-15-Aug_DCRL_A1,15.9,August,Trip 1: Summer 2023,15-Aug-23,DC,R,L,A,1,DCRL A1,DCRL
-15-Aug_DCRL_A2,4.72,August,Trip 1: Summer 2023,15-Aug-23,DC,R,L,A,2,DCRL A2,DCRL
-15-Aug_DCRL_B1,11.1,August,Trip 1: Summer 2023,15-Aug-23,DC,R,L,B,1,DCRL B1,DCRL
-15-Aug_DCRL_B2,7.54,August,Trip 1: Summer 2023,15-Aug-23,DC,R,L,B,2,DCRL B2,DCRL
-15-Aug_DCRW_A1,12.6,August,Trip 1: Summer 2023,15-Aug-23,DC,R,W,A,1,DCRW A1,DCRW
-15-Aug_DCRW_A2,8.32,August,Trip 1: Summer 2023,15-Aug-23,DC,R,W,A,2,DCRW A2,DCRW
-15-Aug_DCRW_B1,10.6,August,Trip 1: Summer 2023,15-Aug-23,DC,R,W,B,1,DCRW B1,DCRW
-15-Aug_DCRW_B2,2.98,August,Trip 1: Summer 2023,15-Aug-23,DC,R,W,B,2,DCRW B2,DCRW
-15-Aug_FieldBlank_1,0,August,Trip 1: Summer 2023,15-Aug-23,Field,Blank,,,1,Field Blank 1,FieldBlank
-15-Aug_HINRL_A1,11.1,August,Trip 1: Summer 2023,15-Aug-23,HI,NR,L,A,1,HINRL A1,HINRL
-15-Aug_HINRL_B1,6,August,Trip 1: Summer 2023,15-Aug-23,HI,NR,L,B,1,HINRL B1,HINRL
-15-Aug_HINRL_B2,5.08,August,Trip 1: Summer 2023,15-Aug-23,HI,NR,L,B,2,HINRL B2,HINRL
-15-Aug_HINRW_A1,15.2,August,Trip 1: Summer 2023,15-Aug-23,HI,NR,W,A,1,HINRW A1,HINRW
-15-Aug_HINRW_A2,5.04,August,Trip 1: Summer 2023,15-Aug-23,HI,NR,W,A,2,HINRW A2,HINRW
-15-Aug_HINRW_B1,13.1,August,Trip 1: Summer 2023,15-Aug-23,HI,NR,W,B,1,HINRW B1,HINRW
-15-Aug_HIRL_A1,13.7,August,Trip 1: Summer 2023,15-Aug-23,HI,R,L,A,1,HIRL A1,HIRL
-15-Aug_HIRL_B1,7.74,August,Trip 1: Summer 2023,15-Aug-23,HI,R,L,B,1,HIRL B1,HIRL
-15-Aug_HIRL_B2,0.748,August,Trip 1: Summer 2023,15-Aug-23,HI,R,L,B,2,HIRL B2,HIRL
-15-Aug_HIRW_A1,7.5,August,Trip 1: Summer 2023,15-Aug-23,HI,R,W,A,1,HIRW A1,HIRW
-15-Aug_HIRW_A2,8.24,August,Trip 1: Summer 2023,15-Aug-23,HI,R,W,A,2,HIRW A2,HIRW
-15-Aug_HIRW_B1,5.12,August,Trip 1: Summer 2023,15-Aug-23,HI,R,W,B,1,HIRW B1,HIRW
-15-Aug_HIRW_B2,7.08,August,Trip 1: Summer 2023,15-Aug-23,HI,R,W,B,2,HIRW B2,HIRW
-15-Aug_LabBlank,0,August,Trip 1: Summer 2023,15-Aug-23,Lab,Blank,,,1,Lab Blank 1,LabBlank
-16-Sep_ExtractionBlank_1,0,,,16-Sep-24,Extraction,Blank,,,1,Extraction Blank 1,ExtractionBlank
-17-Aug_FieldBlank_2,0,August,Trip 1: Summer 2023,17-Aug-23,Field,Blank,,,1,Field Blank 2,FieldBlank
-17-Aug_LabBlank,0,August,Trip 1: Summer 2023,17-Aug-23,Lab,Blank,,,1,Lab Blank 1,LabBlank
-17-Aug_TANRL_A1,0.434,August,Trip 1: Summer 2023,17-Aug-23,TA,NR,L,A,1,TANRL A1,TANRL
-17-Aug_TANRL_A2,0.222,August,Trip 1: Summer 2023,17-Aug-23,TA,NR,L,A,2,TANRL A2,TANRL
-17-Aug_TANRL_B1,0.968,August,Trip 1: Summer 2023,17-Aug-23,TA,NR,L,B,1,TANRL B1,TANRL
-17-Aug_TANRL_B2,0,August,Trip 1: Summer 2023,17-Aug-23,TA,NR,L,B,2,TANRL B2,TANRL
-17-Aug_TANRW_A1,1.44,August,Trip 1: Summer 2023,17-Aug-23,TA,NR,W,A,1,TANRW A1,TANRW
-17-Aug_TANRW_B1,0.55,August,Trip 1: Summer 2023,17-Aug-23,TA,NR,W,B,1,TANRW B1,TANRW
-17-Aug_TARL_A1,2.28,August,Trip 1: Summer 2023,17-Aug-23,TA,R,L,A,1,TARL A1,TARL
-17-Aug_TARL_B1,2.7,August,Trip 1: Summer 2023,17-Aug-23,TA,R,L,B,1,TARL B1,TARL
-17-Aug_TARW_A1,0.594,August,Trip 1: Summer 2023,17-Aug-23,TA,R,W,A,1,TARW A1,TARW
-17-Aug_TARW_B1,1.65,August,Trip 1: Summer 2023,17-Aug-23,TA,R,W,B,1,TARW B1,TARW
-17-Sep_ExtractionBlank_2,0,,,17-Sep-24,Extraction,Blank,,,1,Extraction Blank 2,ExtractionBlank
-18-Sep_ExtractionBlank_3,0,,,18-Sep-24,Extraction,Blank,,,1,Extraction Blank 3,ExtractionBlank
-21-Sep_ExtractionBlank_4,0,,,21-Sep-24,Extraction,Blank,,,1,Extraction Blank 4,ExtractionBlank
-22-Feb_DCNRL_A1,5.8,February,Trip 3: Winter 2024,22-Feb-24,DC,NR,L,A,1,DCNRL A1,DCNRL
-22-Feb_DCNRL_B1,8.36,February,Trip 3: Winter 2024,22-Feb-24,DC,NR,L,B,1,DCNRL B1,DCNRL
-22-Feb_DCNRW_A1,6.3,February,Trip 3: Winter 2024,22-Feb-24,DC,NR,W,A,1,DCNRW A1,DCNRW
-22-Feb_DCNRW_A2,2.68,February,Trip 3: Winter 2024,22-Feb-24,DC,NR,W,A,2,DCNRW A2,DCNRW
-22-Feb_DCNRW_B1,14.3,February,Trip 3: Winter 2024,22-Feb-24,DC,NR,W,B,1,DCNRW B1,DCNRW
-22-Feb_DCRL_A1,7.98,February,Trip 3: Winter 2024,22-Feb-24,DC,R,L,A,1,DCRL A1,DCRL
-22-Feb_DCRL_B1,7.12,February,Trip 3: Winter 2024,22-Feb-24,DC,R,L,B,1,DCRL B1,DCRL
-22-Feb_DCRW_A1,7.42,February,Trip 3: Winter 2024,22-Feb-24,DC,R,W,A,1,DCRW A1,DCRW
-22-Feb_DCRW_B1,3.14,February,Trip 3: Winter 2024,22-Feb-24,DC,R,W,B,1,DCRW B1,DCRW
-22-Feb_DCRW_B2,18,February,Trip 3: Winter 2024,22-Feb-24,DC,R,W,B,2,DCRW B2,DCRW
-22-Feb_FieldBlank_1,0,February,Trip 3: Winter 2024,22-Feb-24,Field,Blank,,,1,Field Blank 1,FieldBlank
-22-Feb_TANRL_A1,0.65,February,Trip 3: Winter 2024,22-Feb-24,TA,NR,L,A,1,TANRL A1,TANRL
-22-Feb_TANRL_B1,0,February,Trip 3: Winter 2024,22-Feb-24,TA,NR,L,B,1,TANRL B1,TANRL
-22-Feb_TANRW_A1,2.42,February,Trip 3: Winter 2024,22-Feb-24,TA,NR,W,A,1,TANRW A1,TANRW
-22-Feb_TANRW_B1,0.666,February,Trip 3: Winter 2024,22-Feb-24,TA,NR,W,B,1,TANRW B1,TANRW
-22-Feb_TANRW_B2,0.814,February,Trip 3: Winter 2024,22-Feb-24,TA,NR,W,B,2,TANRW B2,TANRW
-22-Feb_TARL_A1,1.55,February,Trip 3: Winter 2024,22-Feb-24,TA,R,L,A,1,TARL A1,TARL
-22-Feb_TARL_B1,0.608,February,Trip 3: Winter 2024,22-Feb-24,TA,R,L,B,1,TARL B1,TARL
-22-Feb_TARW_A1,2.12,February,Trip 3: Winter 2024,22-Feb-24,TA,R,W,A,1,TARW A1,TARW
-22-Feb_TARW_B1,1.16,February,Trip 3: Winter 2024,22-Feb-24,TA,R,W,B,1,TARW B1,TARW
-22-Feb_TARW_B2,1.01,February,Trip 3: Winter 2024,22-Feb-24,TA,R,W,B,2,TARW B2,TARW
-23-Feb_FieldBlank_2,0,February,Trip 3: Winter 2024,23-Feb-24,Field,Blank,,,2,Field Blank 2,FieldBlank
-23-Feb_HINRL_A1,6.86,February,Trip 3: Winter 2024,23-Feb-24,HI,NR,L,A,1,HINRL A1,HINRL
-23-Feb_HINRL_B1,3.86,February,Trip 3: Winter 2024,23-Feb-24,HI,NR,L,B,1,HINRL B1,HINRL
-23-Feb_HINRW_A1,4.88,February,Trip 3: Winter 2024,23-Feb-24,HI,NR,W,A,1,HINRW A1,HINRW
-23-Feb_HINRW_B1,6.82,February,Trip 3: Winter 2024,23-Feb-24,HI,NR,W,B,1,HINRW B1,HINRW
-23-Feb_HIRL_A1,6.98,February,Trip 3: Winter 2024,23-Feb-24,HI,R,L,A,1,HIRL A1,HIRL
-23-Feb_HIRL_B1,15,February,Trip 3: Winter 2024,23-Feb-24,HI,R,L,B,1,HIRL B1,HIRL
-23-Feb_HIRW_A1,6.34,February,Trip 3: Winter 2024,23-Feb-24,HI,R,W,A,1,HIRW A1,HIRW
-23-Feb_HIRW_B1,7.98,February,Trip 3: Winter 2024,23-Feb-24,HI,R,W,B,1,HIRW B1,HIRW
-23-Feb_LabBlank_1,0,February,Trip 3: Winter 2024,23-Feb-24,Lab,Blank,,,1,Lab Blank 1,LabBlank
-23-May_DCNRL_A1,6.9,May,Trip 4: Spring 2024,23-May-24,DC,NR,L,A,1,DCNRL A1,DCNRL
-23-May_DCNRL_B1,6.6,May,Trip 4: Spring 2024,23-May-24,DC,NR,L,B,1,DCNRL B1,DCNRL
-23-May_DCNRW_A1,4.68,May,Trip 4: Spring 2024,23-May-24,DC,NR,W,A,1,DCNRW A1,DCNRW
-23-May_DCNRW_B1,9.4,May,Trip 4: Spring 2024,23-May-24,DC,NR,W,B,1,DCNRW B1,DCNRW
-23-May_DCRL_A1,3.28,May,Trip 4: Spring 2024,23-May-24,DC,R,L,A,1,DCRL A1,DCRL
-23-May_DCRL_B1,5.2,May,Trip 4: Spring 2024,23-May-24,DC,R,L,B,1,DCRL B1,DCRL
-23-May_DCRL_B2,3.22,May,Trip 4: Spring 2024,23-May-24,DC,R,L,B,2,DCRL B2,DCRL
-23-May_DCRW_A1,21.6,May,Trip 4: Spring 2024,23-May-24,DC,R,W,A,1,DCRW A1,DCRW
-23-May_DCRW_B1,12.2,May,Trip 4: Spring 2024,23-May-24,DC,R,W,B,1,DCRW B1,DCRW
-23-May_FieldBlank_1,0,May,Trip 4: Spring 2024,23-May-24,Field,Blank,,,1,Field Blank 1,FieldBlank
-23-May_FieldBlank_2,0,May,Trip 4: Spring 2024,23-May-24,Field,Blank,,,2,Field Blank 2,FieldBlank
-23-May_HINRL_A1,4.94,May,Trip 4: Spring 2024,23-May-24,HI,NR,L,A,1,HINRL A1,HINRL
-23-May_HINRL_B1,3.38,May,Trip 4: Spring 2024,23-May-24,HI,NR,L,B,1,HINRL B1,HINRL
-23-May_HINRW_A1,6.92,May,Trip 4: Spring 2024,23-May-24,HI,NR,W,A,1,HINRW A1,HINRW
-23-May_HINRW_B1,5.72,May,Trip 4: Spring 2024,23-May-24,HI,NR,W,B,1,HINRW B1,HINRW
-23-May_HINRW_B2,1.8,May,Trip 4: Spring 2024,23-May-24,HI,NR,W,B,2,HINRW B2,HINRW
-23-May_HIRL_A1,7.34,May,Trip 4: Spring 2024,23-May-24,HI,R,L,A,1,HIRL A1,HIRL
-23-May_HIRL_B1,12.1,May,Trip 4: Spring 2024,23-May-24,HI,R,L,B,1,HIRL B1,HIRL
-23-May_HIRW_A1,0.628,May,Trip 4: Spring 2024,23-May-24,HI,R,W,A,1,HIRW A1,HIRW
-23-May_HIRW_B1,1.55,May,Trip 4: Spring 2024,23-May-24,HI,R,W,B,1,HIRW B1,HIRW
-23-May_HIRW_B2,6.82,May,Trip 4: Spring 2024,23-May-24,HI,R,W,B,2,HIRW B2,HIRW
-23-May_LabBlank_1,0,May,Trip 4: Spring 2024,23-May-24,Lab,Blank,,,1,Lab Blank 1,LabBlank
-23-May_TANRL_A1,4.84,May,Trip 4: Spring 2024,23-May-24,TA,NR,L,A,1,TANRL A1,TANRL
-23-May_TANRL_B1,4.38,May,Trip 4: Spring 2024,23-May-24,TA,NR,L,B,1,TANRL B1,TANRL
-23-May_TANRW_A1,4.5,May,Trip 4: Spring 2024,23-May-24,TA,NR,W,A,1,TANRW A1,TANRW
-23-May_TANRW_B1,5.18,May,Trip 4: Spring 2024,23-May-24,TA,NR,W,B,1,TANRW B1,TANRW
-23-May_TARL_A1,6.4,May,Trip 4: Spring 2024,23-May-24,TA,R,L,A,1,TARL A1,TARL
-23-May_TARL_B1,5.98,May,Trip 4: Spring 2024,23-May-24,TA,R,L,B,1,TARL B1,TARL
-23-May_TARW_A1,7.28,May,Trip 4: Spring 2024,23-May-24,TA,R,W,A,1,TARW A1,TARW
-23-May_TARW_B1,6.24,May,Trip 4: Spring 2024,23-May-24,TA,R,W,B,1,TARW B1,TARW
-23-Nov_DCNRL_A1,29.4,November,Trip 2: Fall 2023,23-Nov-23,DC,NR,L,A,1,DCNRL A1,DCNRL
-23-Nov_DCNRL_B1,20.6,November,Trip 2: Fall 2023,23-Nov-23,DC,NR,L,B,1,DCNRL B1,DCNRL
-23-Nov_DCNRW_A1,28.4,November,Trip 2: Fall 2023,23-Nov-23,DC,NR,W,A,1,DCNRW A1,DCNRW
-23-Nov_DCNRW_B1,23.4,November,Trip 2: Fall 2023,23-Nov-23,DC,NR,W,B,1,DCNRW B1,DCNRW
-23-Nov_DCRL_A1,22.8,November,Trip 2: Fall 2023,23-Nov-23,DC,R,L,A,1,DCRL A1,DCRL
-23-Nov_DCRL_B1,20.8,November,Trip 2: Fall 2023,23-Nov-23,DC,R,L,B,1,DCRL B1,DCRL
-23-Nov_DCRW_A1,37.4,November,Trip 2: Fall 2023,23-Nov-23,DC,R,W,A,1,DCRW A1,DCRW
-23-Nov_DCRW_B1,14.9,November,Trip 2: Fall 2023,23-Nov-23,DC,R,W,B,1,DCRW B1,DCRW
-23-Nov_FieldBlank_1,0,November,Trip 2: Fall 2023,23-Nov-23,Field,Blank,,,1,Field Blank 1,FieldBlank
-23-Nov_FieldBlank_2,0,November,Trip 2: Fall 2023,23-Nov-23,Field,Blank,,,2,Field Blank 2,FieldBlank
-23-Nov_HINRL_A1,20.6,November,Trip 2: Fall 2023,23-Nov-23,HI,NR,L,A,1,HINRL A1,HINRL
-23-Nov_HINRL_B1,4.46,November,Trip 2: Fall 2023,23-Nov-23,HI,NR,L,B,1,HINRL B1,HINRL
-23-Nov_HINRL_B2,6.28,November,Trip 2: Fall 2023,23-Nov-23,HI,NR,L,B,2,HINRL B2,HINRL
-23-Nov_HINRW_A1,8.14,November,Trip 2: Fall 2023,23-Nov-23,HI,NR,W,A,1,HINRW A1,HINRW
-23-Nov_HINRW_A2,3.88,November,Trip 2: Fall 2023,23-Nov-23,HI,NR,W,A,2,HINRW A2,HINRW
-23-Nov_HINRW_B1,2.74,November,Trip 2: Fall 2023,23-Nov-23,HI,NR,W,B,1,HINRW B1,HINRW
-23-Nov_HIRL_A1,8.38,November,Trip 2: Fall 2023,23-Nov-23,HI,R,L,A,1,HIRL A1,HIRL
-23-Nov_HIRL_A2,3.32,November,Trip 2: Fall 2023,23-Nov-23,HI,R,L,A,2,HIRL A2,HIRL
-23-Nov_HIRL_B1,24,November,Trip 2: Fall 2023,23-Nov-23,HI,R,L,B,1,HIRL B1,HIRL
-23-Nov_HIRW_A1,9.68,November,Trip 2: Fall 2023,23-Nov-23,HI,R,W,A,1,HIRW A1,HIRW
-23-Nov_HIRW_A2,11.8,November,Trip 2: Fall 2023,23-Nov-23,HI,R,W,A,2,HIRW A2,HIRW
-23-Nov_HIRW_B1,6.38,November,Trip 2: Fall 2023,23-Nov-23,HI,R,W,B,1,HIRW B1,HIRW
-23-Nov_HIRW_B2,6.44,November,Trip 2: Fall 2023,23-Nov-23,HI,R,W,B,2,HIRW B2,HIRW
-23-Nov_LabBlank_1,0,November,Trip 2: Fall 2023,23-Nov-23,Lab,Blank,,,1,Lab Blank 1,LabBlank
-23-Nov_TANRL_A1,0.8,November,Trip 2: Fall 2023,23-Nov-23,TA,NR,L,A,1,TANRL A1,TANRL
-23-Nov_TANRW_A1,1.83,November,Trip 2: Fall 2023,23-Nov-23,TA,NR,W,A,1,TANRW A1,TANRW
-23-Nov_TANRW_B1,1.76,November,Trip 2: Fall 2023,23-Nov-23,TA,NR,W,B,1,TANRW B1,TANRW
-23-Nov_TARL_A1,4.86,November,Trip 2: Fall 2023,23-Nov-23,TA,R,L,A,1,TARL A1,TARL
-23-Nov_TARL_B1,0.536,November,Trip 2: Fall 2023,23-Nov-23,TA,R,L,B,1,TARL B1,TARL
-23-Nov_TARL_B2,1.13,November,Trip 2: Fall 2023,23-Nov-23,TA,R,L,B,2,TARL B2,TARL
-23-Nov_TARW_A1,1.63,November,Trip 2: Fall 2023,23-Nov-23,TA,R,W,A,1,TARW A1,TARW
-23-Nov_TARW_B1,0.722,November,Trip 2: Fall 2023,23-Nov-23,TA,R,W,B,1,TARW B1,TARW
-23-Sep_ExtractionBlank_5,0,,,23-Sep-24,Extraction,Blank,,,1,Extraction Blank 5,ExtractionBlank
-24-Sep_ExtractionBlank_6,0,,,24-Sep-24,Extraction,Blank,,,1,Extraction Blank 6,ExtractionBlank
-27-Jan_ExtractionBlank_7,0,,,27-Jan-25,Extraction,Blank,,,1,Extraction Blank 7,ExtractionBlank
-28-Jan_ExtractionBlank_8,0,,,28-Jan-25,Extraction,Blank,,,1,Extraction Blank 8,ExtractionBlank
-29-Sep_PR_E,37,,,29-Sep-24,Practice,Practice,Elias,,1,PR E ,PracticePracticeElias
-29-Sep_PR_E_EB,0,,,29-Sep-24,Extraction,Blank,Elias,,1,PR E EB,ExtractionBlankElias
-29-Sep_PR_I,17.7,,,29-Sep-24,Practice,Practice,Indali,,1,PR I,PracticePracticeIndali
-29-Sep_PR_I_EB,0,,,29-Sep-24,Extraction,Blank,Indali,,1,PR I EB,ExtractionBlankIndali
-29-Sep_PR_L_EB,0,,,29-Sep-24,Extraction,Blank,Laura,,1,PR L EB,ExtractionBlankLaura
-29-Sep_PR_N,17.7,,,29-Sep-24,Practice,Practice,Ninon,,1,PR N,PracticePracticeNinon
-29-Sep_PR_N_EB,0,,,29-Sep-24,Extraction,Blank,Ninon,,1,PR N EB,ExtractionBlankNinon
-29-Sep_PR_T,23.6,,,29-Sep-24,Practice,Practice,Tony,,1,PR T,PracticePracticeTony
-29-Sep_PR_T_EB,0,,,29-Sep-24,Extraction,Blank,Tony,,1,PR T EB,ExtractionBlankTony
-PCR_Blank_1,.,,,,,,,,1,PCR Blank,PCRBlank
-PCR_Blank_2,.,,,,,,,,1,PCR Blank,PCRBlank
-PCR_Blank_3,.,,,,,,,,1,PCR Blank,PCRBlank
-PCR_Blank_4,.,,,,,,,,1,PCR Blank,PCRBlank
-PCR_Blank_5,.,,,,,,,,1,PCR Blank,PCRBlank
+SampleName_Long,Quant_nguL,Month,Trip,Date,Date_Extracted,Site,Rookery,Side,Replicate,FilterNum,SampleName,SampleName_Short
+15-Aug_DCNRL_A1,7.66,August,Trip 1: Summer 2023,15-Aug-2023,23-Sep-2024,DC,NR,L,A,1,DCNRL A1,DCNRL
+15-Aug_DCNRL_B1,1.35,August,Trip 1: Summer 2023,15-Aug-2023,21-Sep-2024,DC,NR,L,B,1,DCNRL B1,DCNRL
+15-Aug_DCNRL_B2,6.04,August,Trip 1: Summer 2023,15-Aug-2023,21-Sep-2024,DC,NR,L,B,2,DCNRL B2,DCNRL
+15-Aug_DCNRW_A1,5.6,August,Trip 1: Summer 2023,15-Aug-2023,23-Sep-2024,DC,NR,W,A,1,DCNRW A1,DCNRW
+15-Aug_DCNRW_B1,10,August,Trip 1: Summer 2023,15-Aug-2023,17-Sep-2024,DC,NR,W,B,1,DCNRW B1,DCNRW
+15-Aug_DCRL_A1,15.9,August,Trip 1: Summer 2023,15-Aug-2023,24-Sep-2024,DC,R,L,A,1,DCRL A1,DCRL
+15-Aug_DCRL_A2,4.72,August,Trip 1: Summer 2023,15-Aug-2023,24-Sep-2024,DC,R,L,A,2,DCRL A2,DCRL
+15-Aug_DCRL_B1,11.1,August,Trip 1: Summer 2023,15-Aug-2023,23-Sep-2024,DC,R,L,B,1,DCRL B1,DCRL
+15-Aug_DCRL_B2,7.54,August,Trip 1: Summer 2023,15-Aug-2023,23-Sep-2024,DC,R,L,B,2,DCRL B2,DCRL
+15-Aug_DCRW_A1,12.6,August,Trip 1: Summer 2023,15-Aug-2023,16-Sep-2024,DC,R,W,A,1,DCRW A1,DCRW
+15-Aug_DCRW_A2,8.32,August,Trip 1: Summer 2023,15-Aug-2023,16-Sep-2024,DC,R,W,A,2,DCRW A2,DCRW
+15-Aug_DCRW_B1,10.6,August,Trip 1: Summer 2023,15-Aug-2023,17-Sep-2024,DC,R,W,B,1,DCRW B1,DCRW
+15-Aug_DCRW_B2,2.98,August,Trip 1: Summer 2023,15-Aug-2023,17-Sep-2024,DC,R,W,B,2,DCRW B2,DCRW
+15-Aug_FieldBlank_1,0,August,Trip 1: Summer 2023,15-Aug-2023,18-Sep-2024,Field,Blank,,,1,Field Blank 1,FieldBlank
+15-Aug_HINRL_A1,11.1,August,Trip 1: Summer 2023,15-Aug-2023,24-Sep-2024,HI,NR,L,A,1,HINRL A1,HINRL
+15-Aug_HINRL_B1,6,August,Trip 1: Summer 2023,15-Aug-2023,23-Sep-2024,HI,NR,L,B,1,HINRL B1,HINRL
+15-Aug_HINRL_B2,5.08,August,Trip 1: Summer 2023,15-Aug-2023,23-Sep-2024,HI,NR,L,B,2,HINRL B2,HINRL
+15-Aug_HINRW_A1,15.2,August,Trip 1: Summer 2023,15-Aug-2023,24-Sep-2024,HI,NR,W,A,1,HINRW A1,HINRW
+15-Aug_HINRW_A2,5.04,August,Trip 1: Summer 2023,15-Aug-2023,24-Sep-2024,HI,NR,W,A,2,HINRW A2,HINRW
+15-Aug_HINRW_B1,13.1,August,Trip 1: Summer 2023,15-Aug-2023,16-Sep-2024,HI,NR,W,B,1,HINRW B1,HINRW
+15-Aug_HIRL_A1,13.7,August,Trip 1: Summer 2023,15-Aug-2023,16-Sep-2024,HI,R,L,A,1,HIRL A1,HIRL
+15-Aug_HIRL_B1,7.74,August,Trip 1: Summer 2023,15-Aug-2023,18-Sep-2024,HI,R,L,B,1,HIRL B1,HIRL
+15-Aug_HIRL_B2,0.748,August,Trip 1: Summer 2023,15-Aug-2023,18-Sep-2024,HI,R,L,B,2,HIRL B2,HIRL
+15-Aug_HIRW_A1,7.5,August,Trip 1: Summer 2023,15-Aug-2023,16-Sep-2024,HI,R,W,A,1,HIRW A1,HIRW
+15-Aug_HIRW_A2,8.24,August,Trip 1: Summer 2023,15-Aug-2023,16-Sep-2024,HI,R,W,A,2,HIRW A2,HIRW
+15-Aug_HIRW_B1,5.12,August,Trip 1: Summer 2023,15-Aug-2023,21-Sep-2024,HI,R,W,B,1,HIRW B1,HIRW
+15-Aug_HIRW_B2,7.08,August,Trip 1: Summer 2023,15-Aug-2023,21-Sep-2024,HI,R,W,B,2,HIRW B2,HIRW
+15-Aug_LabBlank,0,August,Trip 1: Summer 2023,15-Aug-2023,23-Sep-2024,Lab,Blank,,,1,Lab Blank 1,LabBlank
+16-Sep_ExtractionBlank_1,0,,,16-Sep-2024,16-Sep-2024,Extraction,Blank,,,1,Extraction Blank 1,ExtractionBlank
+17-Aug_FieldBlank_2,0,August,Trip 1: Summer 2023,17-Aug-2023,28-Jan-2025,Field,Blank,,,1,Field Blank 2,FieldBlank
+17-Aug_LabBlank,0,August,Trip 1: Summer 2023,17-Aug-2023,21-Sep-2024,Lab,Blank,,,1,Lab Blank 1,LabBlank
+17-Aug_TANRL_A1,0.434,August,Trip 1: Summer 2023,17-Aug-2023,28-Jan-2025,TA,NR,L,A,1,TANRL A1,TANRL
+17-Aug_TANRL_A2,0.222,August,Trip 1: Summer 2023,17-Aug-2023,28-Jan-2025,TA,NR,L,A,2,TANRL A2,TANRL
+17-Aug_TANRL_B1,0.968,August,Trip 1: Summer 2023,17-Aug-2023,17-Sep-2024,TA,NR,L,B,1,TANRL B1,TANRL
+17-Aug_TANRL_B2,0,August,Trip 1: Summer 2023,17-Aug-2023,17-Sep-2024,TA,NR,L,B,2,TANRL B2,TANRL
+17-Aug_TANRW_A1,1.44,August,Trip 1: Summer 2023,17-Aug-2023,18-Sep-2024,TA,NR,W,A,1,TANRW A1,TANRW
+17-Aug_TANRW_B1,0.55,August,Trip 1: Summer 2023,17-Aug-2023,23-Sep-2024,TA,NR,W,B,1,TANRW B1,TANRW
+17-Aug_TARL_A1,2.28,August,Trip 1: Summer 2023,17-Aug-2023,21-Sep-2024,TA,R,L,A,1,TARL A1,TARL
+17-Aug_TARL_B1,2.7,August,Trip 1: Summer 2023,17-Aug-2023,16-Sep-2024,TA,R,L,B,1,TARL B1,TARL
+17-Aug_TARW_A1,0.594,August,Trip 1: Summer 2023,17-Aug-2023,23-Sep-2024,TA,R,W,A,1,TARW A1,TARW
+17-Aug_TARW_B1,1.65,August,Trip 1: Summer 2023,17-Aug-2023,27-Jan-2025,TA,R,W,B,1,TARW B1,TARW
+17-Sep_ExtractionBlank_2,0,,,17-Sep-2024,17-Sep-2024,Extraction,Blank,,,1,Extraction Blank 2,ExtractionBlank
+18-Sep_ExtractionBlank_3,0,,,18-Sep-2024,18-Sep-2024,Extraction,Blank,,,1,Extraction Blank 3,ExtractionBlank
+21-Sep_ExtractionBlank_4,0,,,21-Sep-2024,21-Sep-2024,Extraction,Blank,,,1,Extraction Blank 4,ExtractionBlank
+22-Feb_DCNRL_A1,5.8,February,Trip 3: Winter 2024,22-Feb-2024,24-Sep-2024,DC,NR,L,A,1,DCNRL A1,DCNRL
+22-Feb_DCNRL_B1,8.36,February,Trip 3: Winter 2024,22-Feb-2024,28-Jan-2025,DC,NR,L,B,1,DCNRL B1,DCNRL
+22-Feb_DCNRW_A1,6.3,February,Trip 3: Winter 2024,22-Feb-2024,28-Jan-2025,DC,NR,W,A,1,DCNRW A1,DCNRW
+22-Feb_DCNRW_A2,2.68,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,DC,NR,W,A,2,DCNRW A2,DCNRW
+22-Feb_DCNRW_B1,14.3,February,Trip 3: Winter 2024,22-Feb-2024,28-Jan-2025,DC,NR,W,B,1,DCNRW B1,DCNRW
+22-Feb_DCRL_A1,7.98,February,Trip 3: Winter 2024,22-Feb-2024,29-Sep-2024,DC,R,L,A,1,DCRL A1,DCRL
+22-Feb_DCRL_B1,7.12,February,Trip 3: Winter 2024,22-Feb-2024,24-Sep-2024,DC,R,L,B,1,DCRL B1,DCRL
+22-Feb_DCRW_A1,7.42,February,Trip 3: Winter 2024,22-Feb-2024,24-Sep-2024,DC,R,W,A,1,DCRW A1,DCRW
+22-Feb_DCRW_B1,3.14,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,DC,R,W,B,1,DCRW B1,DCRW
+22-Feb_DCRW_B2,18,February,Trip 3: Winter 2024,22-Feb-2024,28-Jan-2025,DC,R,W,B,2,DCRW B2,DCRW
+22-Feb_FieldBlank_1,0,February,Trip 3: Winter 2024,22-Feb-2024,24-Sep-2024,Field,Blank,,,1,Field Blank 1,FieldBlank
+22-Feb_TANRL_A1,0.65,February,Trip 3: Winter 2024,22-Feb-2024,28-Jan-2025,TA,NR,L,A,1,TANRL A1,TANRL
+22-Feb_TANRL_B1,0,February,Trip 3: Winter 2024,22-Feb-2024,24-Sep-2024,TA,NR,L,B,1,TANRL B1,TANRL
+22-Feb_TANRW_A1,2.42,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,TA,NR,W,A,1,TANRW A1,TANRW
+22-Feb_TANRW_B1,0.666,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,TA,NR,W,B,1,TANRW B1,TANRW
+22-Feb_TANRW_B2,0.814,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,TA,NR,W,B,2,TANRW B2,TANRW
+22-Feb_TARL_A1,1.55,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,TA,R,L,A,1,TARL A1,TARL
+22-Feb_TARL_B1,0.608,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,TA,R,L,B,1,TARL B1,TARL
+22-Feb_TARW_A1,2.12,February,Trip 3: Winter 2024,22-Feb-2024,27-Jan-2025,TA,R,W,A,1,TARW A1,TARW
+22-Feb_TARW_B1,1.16,February,Trip 3: Winter 2024,22-Feb-2024,24-Sep-2024,TA,R,W,B,1,TARW B1,TARW
+22-Feb_TARW_B2,1.01,February,Trip 3: Winter 2024,22-Feb-2024,24-Sep-2024,TA,R,W,B,2,TARW B2,TARW
+23-Feb_FieldBlank_2,0,February,Trip 3: Winter 2024,23-Feb-2024,27-Jan-2025,Field,Blank,,,2,Field Blank 2,FieldBlank
+23-Feb_HINRL_A1,6.86,February,Trip 3: Winter 2024,23-Feb-2024,27-Jan-2025,HI,NR,L,A,1,HINRL A1,HINRL
+23-Feb_HINRL_B1,3.86,February,Trip 3: Winter 2024,23-Feb-2024,24-Sep-2024,HI,NR,L,B,1,HINRL B1,HINRL
+23-Feb_HINRW_A1,4.88,February,Trip 3: Winter 2024,23-Feb-2024,24-Sep-2024,HI,NR,W,A,1,HINRW A1,HINRW
+23-Feb_HINRW_B1,6.82,February,Trip 3: Winter 2024,23-Feb-2024,28-Jan-2025,HI,NR,W,B,1,HINRW B1,HINRW
+23-Feb_HIRL_A1,6.98,February,Trip 3: Winter 2024,23-Feb-2024,24-Sep-2024,HI,R,L,A,1,HIRL A1,HIRL
+23-Feb_HIRL_B1,15,February,Trip 3: Winter 2024,23-Feb-2024,27-Jan-2025,HI,R,L,B,1,HIRL B1,HIRL
+23-Feb_HIRW_A1,6.34,February,Trip 3: Winter 2024,23-Feb-2024,28-Jan-2025,HI,R,W,A,1,HIRW A1,HIRW
+23-Feb_HIRW_B1,7.98,February,Trip 3: Winter 2024,23-Feb-2024,28-Jan-2025,HI,R,W,B,1,HIRW B1,HIRW
+23-Feb_LabBlank_1,0,February,Trip 3: Winter 2024,23-Feb-2024,28-Jan-2025,Lab,Blank,,,1,Lab Blank 1,LabBlank
+23-May_DCNRL_A1,6.9,May,Trip 4: Spring 2024,23-May-2024,17-Sep-2024,DC,NR,L,A,1,DCNRL A1,DCNRL
+23-May_DCNRL_B1,6.6,May,Trip 4: Spring 2024,23-May-2024,27-Jan-2025,DC,NR,L,B,1,DCNRL B1,DCNRL
+23-May_DCNRW_A1,4.68,May,Trip 4: Spring 2024,23-May-2024,23-Sep-2024,DC,NR,W,A,1,DCNRW A1,DCNRW
+23-May_DCNRW_B1,9.4,May,Trip 4: Spring 2024,23-May-2024,18-Sep-2024,DC,NR,W,B,1,DCNRW B1,DCNRW
+23-May_DCRL_A1,3.28,May,Trip 4: Spring 2024,23-May-2024,23-Sep-2024,DC,R,L,A,1,DCRL A1,DCRL
+23-May_DCRL_B1,5.2,May,Trip 4: Spring 2024,23-May-2024,21-Sep-2024,DC,R,L,B,1,DCRL B1,DCRL
+23-May_DCRL_B2,3.22,May,Trip 4: Spring 2024,23-May-2024,21-Sep-2024,DC,R,L,B,2,DCRL B2,DCRL
+23-May_DCRW_A1,21.6,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,DC,R,W,A,1,DCRW A1,DCRW
+23-May_DCRW_B1,12.2,May,Trip 4: Spring 2024,23-May-2024,24-Sep-2024,DC,R,W,B,1,DCRW B1,DCRW
+23-May_FieldBlank_1,0,May,Trip 4: Spring 2024,23-May-2024,23-Sep-2024,Field,Blank,,,1,Field Blank 1,FieldBlank
+23-May_FieldBlank_2,0,May,Trip 4: Spring 2024,23-May-2024,27-Jan-2025,Field,Blank,,,2,Field Blank 2,FieldBlank
+23-May_HINRL_A1,4.94,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,HI,NR,L,A,1,HINRL A1,HINRL
+23-May_HINRL_B1,3.38,May,Trip 4: Spring 2024,23-May-2024,23-Sep-2024,HI,NR,L,B,1,HINRL B1,HINRL
+23-May_HINRW_A1,6.92,May,Trip 4: Spring 2024,23-May-2024,21-Sep-2024,HI,NR,W,A,1,HINRW A1,HINRW
+23-May_HINRW_B1,5.72,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,HI,NR,W,B,1,HINRW B1,HINRW
+23-May_HINRW_B2,1.8,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,HI,NR,W,B,2,HINRW B2,HINRW
+23-May_HIRL_A1,7.34,May,Trip 4: Spring 2024,23-May-2024,24-Sep-2024,HI,R,L,A,1,HIRL A1,HIRL
+23-May_HIRL_B1,12.1,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,HI,R,L,B,1,HIRL B1,HIRL
+23-May_HIRW_A1,0.628,May,Trip 4: Spring 2024,23-May-2024,27-Jan-2025,HI,R,W,A,1,HIRW A1,HIRW
+23-May_HIRW_B1,1.55,May,Trip 4: Spring 2024,23-May-2024,18-Sep-2024,HI,R,W,B,1,HIRW B1,HIRW
+23-May_HIRW_B2,6.82,May,Trip 4: Spring 2024,23-May-2024,18-Sep-2024,HI,R,W,B,2,HIRW B2,HIRW
+23-May_LabBlank_1,0,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,Lab,Blank,,,1,Lab Blank 1,LabBlank
+23-May_TANRL_A1,4.84,May,Trip 4: Spring 2024,23-May-2024,18-Sep-2024,TA,NR,L,A,1,TANRL A1,TANRL
+23-May_TANRL_B1,4.38,May,Trip 4: Spring 2024,23-May-2024,28-Jan-2025,TA,NR,L,B,1,TANRL B1,TANRL
+23-May_TANRW_A1,4.5,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,TA,NR,W,A,1,TANRW A1,TANRW
+23-May_TANRW_B1,5.18,May,Trip 4: Spring 2024,23-May-2024,21-Sep-2024,TA,NR,W,B,1,TANRW B1,TANRW
+23-May_TARL_A1,6.4,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,TA,R,L,A,1,TARL A1,TARL
+23-May_TARL_B1,5.98,May,Trip 4: Spring 2024,23-May-2024,27-Jan-2025,TA,R,L,B,1,TARL B1,TARL
+23-May_TARW_A1,7.28,May,Trip 4: Spring 2024,23-May-2024,24-Sep-2024,TA,R,W,A,1,TARW A1,TARW
+23-May_TARW_B1,6.24,May,Trip 4: Spring 2024,23-May-2024,16-Sep-2024,TA,R,W,B,1,TARW B1,TARW
+23-Nov_DCNRL_A1,29.4,November,Trip 2: Fall 2023,23-Nov-2023,18-Sep-2024,DC,NR,L,A,1,DCNRL A1,DCNRL
+23-Nov_DCNRL_B1,20.6,November,Trip 2: Fall 2023,23-Nov-2023,16-Sep-2024,DC,NR,L,B,1,DCNRL B1,DCNRL
+23-Nov_DCNRW_A1,28.4,November,Trip 2: Fall 2023,23-Nov-2023,16-Sep-2024,DC,NR,W,A,1,DCNRW A1,DCNRW
+23-Nov_DCNRW_B1,23.4,November,Trip 2: Fall 2023,23-Nov-2023,21-Sep-2024,DC,NR,W,B,1,DCNRW B1,DCNRW
+23-Nov_DCRL_A1,22.8,November,Trip 2: Fall 2023,23-Nov-2023,17-Sep-2024,DC,R,L,A,1,DCRL A1,DCRL
+23-Nov_DCRL_B1,20.8,November,Trip 2: Fall 2023,23-Nov-2023,28-Jan-2025,DC,R,L,B,1,DCRL B1,DCRL
+23-Nov_DCRW_A1,37.4,November,Trip 2: Fall 2023,23-Nov-2023,16-Sep-2024,DC,R,W,A,1,DCRW A1,DCRW
+23-Nov_DCRW_B1,14.9,November,Trip 2: Fall 2023,23-Nov-2023,24-Sep-2024,DC,R,W,B,1,DCRW B1,DCRW
+23-Nov_FieldBlank_1,0,November,Trip 2: Fall 2023,23-Nov-2023,21-Sep-2024,Field,Blank,,,1,Field Blank 1,FieldBlank
+23-Nov_FieldBlank_2,0,November,Trip 2: Fall 2023,23-Nov-2023,21-Sep-2024,Field,Blank,,,2,Field Blank 2,FieldBlank
+23-Nov_HINRL_A1,20.6,November,Trip 2: Fall 2023,23-Nov-2023,16-Sep-2024,HI,NR,L,A,1,HINRL A1,HINRL
+23-Nov_HINRL_B1,4.46,November,Trip 2: Fall 2023,23-Nov-2023,21-Sep-2024,HI,NR,L,B,1,HINRL B1,HINRL
+23-Nov_HINRL_B2,6.28,November,Trip 2: Fall 2023,23-Nov-2023,21-Sep-2024,HI,NR,L,B,2,HINRL B2,HINRL
+23-Nov_HINRW_A1,8.14,November,Trip 2: Fall 2023,23-Nov-2023,17-Sep-2024,HI,NR,W,A,1,HINRW A1,HINRW
+23-Nov_HINRW_A2,3.88,November,Trip 2: Fall 2023,23-Nov-2023,17-Sep-2024,HI,NR,W,A,2,HINRW A2,HINRW
+23-Nov_HINRW_B1,2.74,November,Trip 2: Fall 2023,23-Nov-2023,16-Sep-2024,HI,NR,W,B,1,HINRW B1,HINRW
+23-Nov_HIRL_A1,8.38,November,Trip 2: Fall 2023,23-Nov-2023,23-Sep-2024,HI,R,L,A,1,HIRL A1,HIRL
+23-Nov_HIRL_A2,3.32,November,Trip 2: Fall 2023,23-Nov-2023,23-Sep-2024,HI,R,L,A,2,HIRL A2,HIRL
+23-Nov_HIRL_B1,24,November,Trip 2: Fall 2023,23-Nov-2023,18-Sep-2024,HI,R,L,B,1,HIRL B1,HIRL
+23-Nov_HIRW_A1,9.68,November,Trip 2: Fall 2023,23-Nov-2023,24-Sep-2024,HI,R,W,A,1,HIRW A1,HIRW
+23-Nov_HIRW_A2,11.8,November,Trip 2: Fall 2023,23-Nov-2023,24-Sep-2024,HI,R,W,A,2,HIRW A2,HIRW
+23-Nov_HIRW_B1,6.38,November,Trip 2: Fall 2023,23-Nov-2023,23-Sep-2024,HI,R,W,B,1,HIRW B1,HIRW
+23-Nov_HIRW_B2,6.44,November,Trip 2: Fall 2023,23-Nov-2023,23-Sep-2024,HI,R,W,B,2,HIRW B2,HIRW
+23-Nov_LabBlank_1,0,November,Trip 2: Fall 2023,23-Nov-2023,17-Sep-2024,Lab,Blank,,,1,Lab Blank 1,LabBlank
+23-Nov_TANRL_A1,0.8,November,Trip 2: Fall 2023,23-Nov-2023,17-Sep-2024,TA,NR,L,A,1,TANRL A1,TANRL
+23-Nov_TANRW_A1,1.83,November,Trip 2: Fall 2023,23-Nov-2023,18-Sep-2024,TA,NR,W,A,1,TANRW A1,TANRW
+23-Nov_TANRW_B1,1.76,November,Trip 2: Fall 2023,23-Nov-2023,16-Sep-2024,TA,NR,W,B,1,TANRW B1,TANRW
+23-Nov_TARL_A1,4.86,November,Trip 2: Fall 2023,23-Nov-2023,16-Sep-2024,TA,R,L,A,1,TARL A1,TARL
+23-Nov_TARL_B1,0.536,November,Trip 2: Fall 2023,23-Nov-2023,24-Sep-2024,TA,R,L,B,1,TARL B1,TARL
+23-Nov_TARL_B2,1.13,November,Trip 2: Fall 2023,23-Nov-2023,24-Sep-2024,TA,R,L,B,2,TARL B2,TARL
+23-Nov_TARW_A1,1.63,November,Trip 2: Fall 2023,23-Nov-2023,21-Sep-2024,TA,R,W,A,1,TARW A1,TARW
+23-Nov_TARW_B1,0.722,November,Trip 2: Fall 2023,23-Nov-2023,21-Sep-2024,TA,R,W,B,1,TARW B1,TARW
+23-Sep_ExtractionBlank_5,0,,,23-Sep-2024,23-Sep-2024,Extraction,Blank,,,1,Extraction Blank 5,ExtractionBlank
+24-Sep_ExtractionBlank_6,0,,,24-Sep-2024,24-Sep-2024,Extraction,Blank,,,1,Extraction Blank 6,ExtractionBlank
+27-Jan_ExtractionBlank_7,0,,,27-Jan-2025,27-Jan-2025,Extraction,Blank,,,1,Extraction Blank 7,ExtractionBlank
+28-Jan_ExtractionBlank_8,0,,,28-Jan-2025,28-Jan-2025,Extraction,Blank,,,1,Extraction Blank 8,ExtractionBlank
+29-Sep_PR_E,37,,,29-Sep-2024,29-Sep-2024,Practice,Practice,Elias,,1,PR E ,Elias
+29-Sep_PR_E_EB,0,,,29-Sep-2024,29-Sep-2024,Extraction,Blank,Elias,,1,PR E EB,Elias Blank
+29-Sep_PR_I,17.7,,,29-Sep-2024,29-Sep-2024,Practice,Practice,Indali,,1,PR I,Indali
+29-Sep_PR_I_EB,0,,,29-Sep-2024,29-Sep-2024,Extraction,Blank,Indali,,1,PR I EB,Indali Blank
+29-Sep_PR_L_EB,0,,,29-Sep-2024,29-Sep-2024,Extraction,Blank,Laura,,1,PR L EB,Laura Blank
+29-Sep_PR_N,17.7,,,29-Sep-2024,29-Sep-2024,Practice,Practice,Ninon,,1,PR N,Ninon
+29-Sep_PR_N_EB,0,,,29-Sep-2024,29-Sep-2024,Extraction,Blank,Ninon,,1,PR N EB,Ninon Blank
+29-Sep_PR_T,23.6,,,29-Sep-2024,29-Sep-2024,Practice,Practice,Tony,,1,PR T,Tony
+29-Sep_PR_T_EB,0,,,29-Sep-2024,29-Sep-2024,Extraction,Blank,Tony,,1,PR T EB,Tony Blank
+PCR_Blank_1,,,,,.,PCR,Blank,,,1,PCR Blank,PCRBlank
+PCR_Blank_2,,,,,.,PCR,Blank,,,1,PCR Blank,PCRBlank
+PCR_Blank_3,,,,,.,PCR,Blank,,,1,PCR Blank,PCRBlank
+PCR_Blank_4,,,,,.,PCR,Blank,,,1,PCR Blank,PCRBlank
+PCR_Blank_5,,,,,.,PCR,Blank,,,1,PCR Blank,PCRBlank
