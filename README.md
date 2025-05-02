@@ -87,5 +87,5 @@ For example, for an ASV identified in a field blank for a specific sampling day,
 Thus, the abundance of each sequence occurring in a field or lab blank is removed from all samples collected on that sampling day. The abundance of each sequence occurring in an extraction blank was removed from all samples extracted on the same day. The abundance of each sequence within any PCR blank was removed from all samples.      
 
 
-All saved output can be found in the data folder.  
+
 
