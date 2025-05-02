@@ -87,4 +87,3 @@ After identifying and removing contaminants, we then identify each ASV in each b
 For example, for an ASV identified in a field blank for a specific sampling day, the abundance of that ASV within that blank is removed from each sample collected on the same sampling day.  
 Thus, the abundance of each sequence occurring in a field or lab blank is removed from all samples collected on that sampling day. The abundance of each sequence occurring in an extraction blank was removed from all samples extracted on the same day. The abundance of each sequence within any PCR blank was removed from all samples.      
 
-
