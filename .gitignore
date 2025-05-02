@@ -8,6 +8,7 @@ Rdata/*
 .RData
 .RDataTmp
 .DS_Store
+*.RProj
 
 # User-specific files
 .Ruserdata
