@@ -18,9 +18,20 @@ accessions<-strsplit(blastResults[,2],'\\|') #select the second column
 
 taxaId<-accessionToTaxa(accessions,"~/accessionTaxa.sql")
 taxResults <- getTaxonomy(taxaId,'~/accessionTaxa.sql')
+taxResults <- as.data.frame(getTaxonomy(unique(taxaId),'~/accessionTaxa.sql'),getNames=TRUE) %>% #converts taxa ids to tax ranks
+  rownames_to_column(.,"taxid") %>% mutate(.,taxid=str_trim(taxid))
+
+t1d <- blastResults[1:2] #qseqid sseqid
+t1d$taxid <- unlist(taxaId) %>% as.character()
+t2d <- merge(t1d,taxResults,by.x='taxid',all.x=TRUE) %>% rename('qseqid'="V1","sseqid"="V2")
+
 
 write.csv(taxaId,"taxonomizr.taxaID.csv")
 write.csv(taxResults, "taxonomizr.taxResults.csv")
+
+write.csv(t2d,'taxonomizr.merge.csv')
+write_rds(t2d,'taxonomizr.merge.rds')
+
 
 
 ######### MAR database #########
@@ -43,8 +54,4 @@ write.csv(t2,'taxonomizr.mar.merge.csv')
 write_rds(t2,'taxonomizr.mar.merge.rds')
 
 
-<<<<<<< HEAD
 save.image(paste0(dir_data,"/05_AccNo_Tax.RData"))
-=======
-save.image("/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata/05_AccNo_Tax.RData")
->>>>>>> 5e51de716067e0ea908f933318958b34011b9406
