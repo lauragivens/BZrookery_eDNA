@@ -1,0 +1,625 @@
+---
+title: "Remove blanks"
+output: html_output
+---
+(save as _output: html_notebook_ for updated nb.html doc; but it will *only* save output that in the viewer pane/window, it will not rerun chunks to generate new output.)  
+# Load  
+Load libraries  
+```{r,message=FALSE}
+library(phyloseq)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(vegan)
+library(decontam)
+```
+
+Load data  
+```{r load}
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+
+#ps <- readRDS(paste0(dir_results,"/ps.rds"))
+#ps.troph <- readRDS(paste0(dir_results,"/ps.troph.rds"))
+ps.bold <- readRDS(paste0(dir_results,'/ps.bold.rds'))
+
+#taxa <- readRDS(paste0(dir_results,"/taxtable.rds"))
+#taxa_troph <- readRDS(paste0(dir_results,"/taxtable.wtroph.rds"))
+taxa_bold <- readRDS(paste0(dir_results,"/taxtable.bold.rds"))
+curated_lulu <- readRDS(paste0(dir_results,'/lulu-clustertable.rds'))
+curated_asv <- readRDS(paste0(dir_results,"/asvtable.rds"))
+samplelist <- readRDS(paste0(dir_results,'/metadata.rds'))
+```
+Alternatively, load working environment:  
+```{r load_env}
+load(paste0(dir_data,'/07_BOLDBlanks.RData'))
+```
+
+```{r}
+samplelist[samplelist==""] <- NA
+samplelist[samplelist=="."] <- NA
+samplelist$Date <- lubridate::dmy(samplelist$Date)
+samplelist$Date_Extracted <- lubridate::dmy(samplelist$Date_Extracted)
+samplelist$Quant_nguL <- as.numeric(samplelist$Quant_nguL) %>% round(digits = 2)
+samplelist$Quant_nguL[is.na(samplelist$Quant_nguL)] <- 0
+#samplelist$Month <- lubridate::month(samplelist$Date)
+samplelist <- samplelist %>% mutate(.,
+                                    Rookery=case_when(Rookery=="R" ~ "Rookery",
+                                                      Rookery=="NR" ~ "Non-rookery",
+                                                      Rookery=="Blank" ~ "Blank",
+                                                      Rookery=="Practice" ~ "Practice"),
+                                    Site=case_when(Site=="HI" ~ "Hicks Caye",
+                                                   Site=="TA" ~ "Turneffe Atoll",
+                                                   Site=="DC" ~ "Drowned Caye",
+                                                   Site=="Practice" ~ "Practice",
+                                                   Site=="Extraction" ~ "Extraction",
+                                                   Site=="Field" ~ "Field",
+                                                   Site=="Lab" ~ "Lab",
+                                                   Site=="PCR" ~ "PCR"),
+                                    Side=case_when(Side=="L" ~ "Leeward",
+                                                   Side=="W" ~ "Windward")
+                                    )
+
+sample_data(ps.bold) <- samplelist
+```
+
+# Blanks  
+
+Make a phyloseq object of only the blanks. How many sequences are in each? 
+```{r}
+ps.blanks <- ps.bold %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
+
+blank.asvs <- taxa_names(ps.blanks)
+
+ps.blanks 
+sample_sums(ps.blanks) %>% sort()
+```
+
+## Percent of sequences/ASVs  
+How many ASVs are in the blanks?  
+```{r}
+length(blank.asvs)
+```
+What percent of taxa do those ASVs comprise?  
+```{r}
+ntaxa(prune_taxa(taxa_names(ps.bold)%in%blank.asvs,ps.bold)) / ntaxa(ps.bold) * 100
+```
+4.217% of taxa    
+
+What percent of sequences do those ASVs comprise?  
+```{r}
+sum(taxa_sums(prune_taxa(taxa_names(ps.bold)%in%blank.asvs,ps.bold))) / sum(taxa_sums(ps.bold)) * 100
+```
+84.89% of the sequences  
+
+And how many of those are in the blank samples themselves?  
+```{r}
+sum(taxa_sums(ps.blanks)) / sum(taxa_sums(ps.bold)) * 100
+```
+1.17% of ASVs are found in the blanks
+
+```{r}
+sample_sums(ps.blanks) %>% summary()
+```
+
+We want to identify what taxa are in the blanks, and whether it's better to remove all blank ASVs from the dataset or do some other method.  
+
+## What taxa are in blanks  
+Are these useful/biologically relevant taxa? Or are they contaminants like human, feline, canine DNA?   
+```{r}
+get_taxa_unique(ps.blanks,"Species")
+```
+Many of these are fisheries-relevant or otherwise target fish species.  
+
+## Compare taxa before and after blank removal   
+When we remove the ASVs from the blanks, it only removes the specific sequence. There could be other ASVs that are assigned to the same taxa, which would make losing those high-abundance ASVs more palatable. Here we are going to get the list of species found in the blanks, and compare sample sums of those species before and after removal. If the sample sums remain high/similar, then removing the specific ASVs found in the blanks are unlikely to have strong negative effects.   
+
+However, this isn't what we find. Removal of blank ASVs isn't compensated for with other ASVs, and the number of sequences still assigned to those taxa drops dramatically.     
+```{r}
+ps.bold %>%  #sample sums when subset to only species in the blanks
+  subset_taxa(.,Species%in%(get_taxa_unique(ps.blanks,"Species"))) %>% 
+  sample_sums() %>% summary()
+
+(ps.bold %>% prune_taxa(!taxa_names(.)%in%taxa_names(ps.blanks),.)) %>%  #sample sums when subset to only species in the blanks
+  subset_taxa(.,Species%in%(get_taxa_unique(ps.blanks,"Species"))) %>% 
+  sample_sums() %>% summary()
+```
+
+# Decontamination  
+
+## Identify contaminants  
+Okay, so we have decided that carte blanche removing the ASVs that are found in our blanks would result in:  
+1. *Removing important taxa* (species assigned to those ASVs are fish)  
+2. *Seriously reducing the occurrence of key species in the samples* (other ASVs are not assigned to the same fish species with similar frequency)  
+
+And indeed this is a strategy that is generally seen as overly cautious and likely to remove biologically relevant data. (e.g., QIIME2 documentation, Nguyen et al., 2015 )
+
+We could remove the number of sequences found in the blanks from each sample (again, see Nguyen et al., 2015)
+Or remove any ASVs below a certain relative abundance threshold (see background in Davis et al., 2018)
+Or use decontam R package, which uses the following principles:   
+Sequences from contaminating taxa are likely to have frequencies that inversely correlate with sample DNA concentration [8, 14, 16, 30] and (2) sequences from contaminating taxa are likely to have higher prevalence in control samples than in true samples   
+
+So using decontam package...    
+_Using the “frequency” method_, the distribution of the frequency of each sequence feature as a function of the input DNA concentration is used to identify contaminants.  
+_Using the “prevalence” method_, the prevalence (presence/absence across samples) of each sequence feature in true positive samples is compared to the prevalence in negative controls to identify contaminants.  
+
+We’ll summarize the sample variable that holds the negative control information as a logical variable, with TRUE for control samples, as that is the form required by isContaminant.  
+```{r}
+ps.decontam <- ps.bold %>% subset_samples(Site != "Practice") %>% prune_samples(sample_sums(.)>0,.)
+sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Field"
+sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Lab"
+sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Extraction"
+
+sample_data(ps.decontam)$Quant_nguL[sample_data(ps.decontam)$Quant_nguL==0] <- 0.000000001
+# don't want to include the PCR blanks  
+```
+```{r}
+contamdf.freq <- isContaminant((ps.decontam %>% subset_samples(Quant_nguL>0)), method="frequency", conc="Quant_nguL")
+contamdf.prev <- isContaminant(ps.decontam, method="prevalence", neg="is.neg")
+```
+
+#### Decontam: Concentration-based  
+What contaminants were identified based on DNA concentration?   
+```{r}
+contamdf.freq %>% filter(contaminant==TRUE)
+contamnames.freq <- rownames(contamdf.freq %>% filter(contaminant==TRUE))
+```
+What taxa are those assigned to?  
+```{r}
+ps.decontam %>% prune_taxa(taxa_names(.)%in%contamnames.freq,.) %>% tax_table() %>% as.matrix() %>% as.data.frame() %>% .[2:8]
+```
+
+```{r}
+ps.decontam %>% prune_taxa(taxa_names(.)%in%contamnames.freq,.) %>% subset_taxa(!is.na(Phylum)) %>% tax_table() %>% as.matrix() %>% as.data.frame() %>% .[2:8]
+```
+
+What does that look like?  
+```{r}
+plot_frequency((ps.decontam  %>%  subset_samples(Quant_nguL>0)), 
+               contamnames.freq[1:20], conc="Quant_nguL") + 
+  xlab("DNA Concentration (ng/uL)")
+```
+"In this plot the dashed black line shows the model of a noncontaminant sequence feature for which frequency is expected to be independent of the input DNA concentration. The red line shows the model of a contaminant sequence feature, for which frequency is expected to be inversely proportional to input DNA concentration, as contaminating DNA will make up a larger fraction of the total DNA in samples with very little total DNA. "  
+So a falsely identified contaminant would not follow the red line very well  
+
+#### Decontam: Prevalence-based  
+What contaminants were identified based on prevalence?   
+```{r}
+contamnames.prev <- rownames(contamdf.prev %>% filter(contaminant==TRUE))
+contamdf.prev %>% filter(contaminant==TRUE)
+```
+What taxa do those correspond to?  
+```{r}
+ps.decontam %>% prune_taxa(taxa_names(.)%in%contamnames.prev,.)%>% subset_taxa(!is.na(Phylum)) %>% tax_table() %>% as.matrix() %>% as.data.frame() %>% .[2:8]
+```
+
+Visualize how many times sequences identified as contaminants were found in negatives versus positives  
+```{r}
+ps.decontam.pa <- transform_sample_counts(ps.decontam, function(abund) 1*(abund>0))
+ps.decontam.pa.neg <- prune_samples(sample_data(ps.decontam.pa)$Rookery == "Blank", ps.decontam.pa)
+ps.decontam.pa.pos <- prune_samples(sample_data(ps.decontam.pa)$Rookery != "Blank", ps.decontam.pa)
+# Make data.frame of prevalence in positive and negative samples
+df.pa <- data.frame(pa.pos=taxa_sums(ps.decontam.pa.pos), pa.neg=taxa_sums(ps.decontam.pa.neg),
+                      contaminant=contamdf.prev$contaminant)
+ggplot(data=df.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point(position='jitter') +
+  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+```
+
+
+# Removal  
+
+## Contaminants  
+We are first going to use a combination of both decontam methods to remove contaminant ASVs from the ps object  
+(method=combined,minimum, or both)
+Combined = probabilities of both are combined with Fisher's method to identify contaminants
+Minimum = minimum of both probabilites is used to identify contaminants
+Either = contaminants are called if they are identified by either method  
+Both = contaminants are called if they are identified by both methods  
+```{r}
+contamdf <- isContaminant(ps.decontam, method="combined", neg="is.neg", conc="Quant_nguL")
+contamdf.names <- row.names(contamdf %>% filter(contaminant==TRUE))
+contamdf %>% filter(contaminant==TRUE)
+```
+
+What was kept from the separate versions?  
+Prevalence: 
+```{r}
+contamdf.names[contamdf.names%in%contamnames.prev]
+```
+Frequency: 
+```{r}
+contamdf.names[contamdf.names%in%contamnames.freq]
+```
+
+Just for another double check, what does the plot look like for the combined decontam df?  
+```{r}
+df.comb.pa <- data.frame(pa.pos=taxa_sums(ps.decontam.pa.pos), 
+                         pa.neg=taxa_sums(ps.decontam.pa.neg),
+                         contaminant=contamdf$contaminant) #new data frame with the combined contaminants included
+
+ggplot(data=df.comb.pa, aes(x=pa.neg, y=pa.pos, color=contaminant)) + geom_point(position='jitter') +
+  xlab("Prevalence (Negative Controls)") + ylab("Prevalence (True Samples)")
+```
+
+
+What percent of taxa do those ASVs comprise?  
+```{r}
+length(contamdf.names) / ntaxa(ps.bold) * 100
+```
+0.683% of taxa     
+
+What percent of sequences do those ASVs comprise?  
+```{r}
+sum(taxa_sums(prune_taxa(taxa_names(ps.bold)%in%contamdf.names,ps.bold))) / sum(taxa_sums(ps.bold)) * 100
+```
+0.20% of the sequences  
+
+```{r}
+sample_sums(ps.bold %>% prune_taxa(taxa_names(.)%in%contamdf.names,.)) %>% summary()
+```
+
+Remove samples with less than 
+```{r}
+decontam.ps.bold <- ps.bold %>% 
+  #prune_samples(sample_sums(.)>50,.) %>% 
+  prune_taxa(!taxa_names(.)%in%contamdf.names,.)#%>% 
+  #subset_samples(., Rookery != 'Practice') 
+
+ps.bold
+decontam.ps.bold
+```
+## Blanks  
+After decontamination, we are next going to get a list of ASVs that appear in the blanks and their quantities, and remove that number from each sample from that site.    
+```{r}
+ps.blanks <- decontam.ps.bold %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
+```
+
+We have field blanks, lab blanks, extraction blanks, and PCR blanks.  
+```{r}
+ps.blanks 
+ntaxa(ps.blanks)
+sample_sums(ps.blanks) %>% sort()
+```
+Remove ASVs from PCR blanks from all samples  
+PCR blanks:  
+```{r}
+ps.blanks %>% subset_samples(Site=="PCR") %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table() %>% .[1:10,]
+```
+
+Remove ASVs from extraction blanks from their respective extraction day  
+```{r}
+ps.blanks %>% subset_samples(Site=="Extraction")  %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table() %>% .[1:10,]
+```
+
+Remove ASVs from field and lab blanks from their respective sample days   
+```{r}
+ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field")  %>% prune_taxa(taxa_sums(.)>0,.) %>% otu_table() %>% .[1:10,]
+```
+```{r}
+ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field") %>% sample_names()
+```
+
+
+Going in order:  
+```{r}
+prune_a.ps <- decontam.ps.bold
+```
+
+### Field and lab blanks   
+```{r}
+sample_events <- ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field") %>% get_variable(.,"Date") %>% unique()
+```
+Test:
+```{r,eval=FALSE}
+ a <- prune_a.ps %>% subset_samples(Date==sample_events[1] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune_a.ps %>% subset_samples(Date==sample_events[1] & Rookery == "Blank") %>% sample_names() #get sample names of blanks from that trip 
+  
+  #before:
+  #otudf[b,a]
+  #blanks:
+  #otudf[b,c]
+  #after
+  #otudf[b,a] %>% mutate(across(all_of(a),~.x - otudf[b,c])) %>% pmax(.,0) 
+  
+
+#for (i in 1:length(sample_events)) { #for each sampling day 
+#  a <- prune_a.ps %>% subset_samples(Date==sample_events[i] & Rookery != "Blank") 
+#  print(a)
+#}
+
+
+for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- prune_samples(sample_names(prune_a.ps)==c[p], #get only the blank sample we're working with
+                     prune_a.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names() #get seqid of asvs in neg control 
+
+  if (length(b)>0){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_a.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
+     otu_table(prune_a.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+}
+
+#in neg
+otu_table(decontam.ps.bold)[b[1],c]
+
+#before
+otu_table(decontam.ps.bold)[b[1],a] #samples from that sampling event
+
+#after
+otu_table(prune_a.ps)[b[1],a]
+```
+
+```{r}
+prune_a.ps <- decontam.ps.bold
+rm(a)
+rm(b)
+rm(c)
+rm(otudf)
+
+for (n in 1:length(sample_events)) { #for each sampling day 
+ 
+  a <- prune_a.ps %>% subset_samples(Date==sample_events[n] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune_a.ps %>% subset_samples(Date==sample_events[n] & Rookery == "Blank") %>% sample_names()
+
+for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- prune_samples(sample_names(prune_a.ps)==c[p], #get only the blank sample we're working with
+                     prune_a.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names() #get seqid of asvs in neg control 
+
+  if (length(b)>0){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_a.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
+     otu_table(prune_a.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+}
+  
+}
+
+```
+Check
+```{r}
+#in neg
+otu_table(decontam.ps.bold)[b[1],c]
+
+#before
+otu_table(decontam.ps.bold)[b[1],a] #samples from that sampling event
+
+#after
+otu_table(prune_a.ps)[b[1],a]
+```
+
+### Extraction blanks  
+```{r}
+prune_b.ps <- prune_a.ps
+ext_events <- ps.blanks %>% subset_samples(Site=="Extraction") %>% get_variable(.,"Date_Extracted") %>% unique()
+```
+
+```{r}
+for (n in 1:length(ext_events)) { #for each sampling day 
+ 
+  a <- prune_b.ps %>% subset_samples(Date_Extracted==ext_events[n] & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- prune_b.ps %>% subset_samples(Date_Extracted==ext_events[n] & Rookery == "Blank") %>% sample_names()
+
+for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- tryCatch((prune_samples(sample_names(prune_b.ps)==c[p], #get only the blank sample we're working with
+                     prune_b.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names()), #get seqid of asvs in neg control 
+                           error=function(e){return(FALSE)}
+    )
+
+  if (!isFALSE(b)){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_b.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[p]])) %>% pmax(.,0)
+     otu_table(prune_b.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+}
+  
+}
+
+```
+Check
+```{r}
+#in neg
+otu_table(prune_a.ps)[b[1],c]
+
+#before
+otu_table(prune_a.ps)[b[1],a] #samples from that sampling event
+
+#after
+otu_table(prune_b.ps)[b[1],a]
+```
+
+### PCR blanks  
+```{r}
+prune_c.ps <- prune_b.ps
+pcr_events <- ps.blanks %>% subset_samples(Site=="PCR") %>% sample_names()
+```
+```{r}
+otu_table(ps.blanks %>% subset_samples(Site=="PCR") %>% prune_taxa(taxa_sums(.)>0,.)) %>% .[1:10]
+```
+Test: 
+```{r,eval=FALSE}
+#for (n in 1:length(pcr_events)) { #for each sample 
+ 
+  a <- prune_c.ps %>% subset_samples(Site!="PCR" & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- pcr_events
+
+#for (p in 1:length(c)) { #for each negative control sample
+  
+###test 1: tax names
+    b <- tryCatch((prune_samples(sample_names(prune_c.ps)==c[1], #get only the blank sample we're working with
+                     prune_c.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names()), #get seqid of asvs in neg control 
+                           error=function(e){return(FALSE)}
+    )
+###test 2: otu table
+  otudf <- otu_table(prune_c.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[1],a] <- otudf[b[1],a] %>% mutate(across(all_of(a),~.x - otudf[b[1],c[1]])) %>% pmax(.,0)
+     otu_table(prune_c.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+
+#in neg
+otudf[b[1],c]
+#before
+otu_table(prune_b.ps)[b[1],a[1:5]] #samples from that sampling event
+#after
+otudf[b[1],a[1:5]]
+#before - neg == after 
+     
+###test 3: loop seqs
+  if (!isFALSE(b)){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_c.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[1]])) %>% pmax(.,0)
+     otu_table(prune_c.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+#}
+  
+#}
+
+otudf[b,c] #remember we only did c[1] though
+#before
+otu_table(prune_b.ps)[b,a[1:5]] #samples from that sampling event
+#after
+otudf[b,a[1:5]]
+
+
+#if it works, reset
+rm(a)
+rm(b)
+rm(c)
+rm(otudf)
+prune_c.ps <- prune_b.ps
+pcr_events <- ps.blanks %>% subset_samples(Site=="PCR") %>% sample_names()
+```
+
+```{r}
+for (n in 1:length(pcr_events)) { #for each sample 
+ 
+  a <- prune_c.ps %>% subset_samples(Site!="PCR" & Rookery != "Blank") %>% sample_names() #get sample names from that sampling day  
+  c <- pcr_events
+
+#for (p in 1:length(c)) { #for each negative control sample
+   
+  b <- tryCatch((prune_samples(sample_names(prune_c.ps)==c[n], #get only the blank sample we're working with
+                     prune_c.ps) %>% 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names()), #get seqid of asvs in neg control 
+                           error=function(e){return(FALSE)}
+    )
+
+  if (!isFALSE(b)){
+  for (i in 1:length(b)) { #for each seq in the neg control 
+    
+     otudf <- otu_table(prune_c.ps) %>% as.matrix() %>% as.data.frame()
+     otudf[b[i],a] <- otudf[b[i],a] %>% mutate(across(all_of(a),~.x - otudf[b[i],c[n]])) %>% pmax(.,0)
+     otu_table(prune_c.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
+  }
+  }
+#}
+  
+}
+
+```
+Check
+```{r}
+#in neg
+otu_table(prune_b.ps)[b,c] %>% rowSums() %>% .[1:10]
+
+#before
+otu_table(prune_b.ps)[b[1:10],a[1:5]] #samples from that sampling event
+
+#after
+otu_table(prune_c.ps)[b[1:10],a[1:5]]
+```
+
+### Final
+```{r}
+prune.decontam.ps.bold <- prune_c.ps %>% subset_samples(Rookery!="Blank")
+```
+
+# Overview   
+Blanks  
+with na taxa included
+```{r}
+ov.og.blana <- ps.blanks %>% plot_bar(x="SampleName_Short",fill="Family") + geom_bar(stat="identity",position="stack") + facet_grid(~Site,scales="free") + labs(title="ASV abundance of negative controls and blanks",x="Sample Name") + theme(legend.position="none")
+```
+with na taxa removed  
+```{r}
+ov.og.bla <- ps.blanks %>% subset_taxa(!is.na(Phylum)) %>% plot_bar(x="SampleName_Short",fill="Family") + geom_bar(stat="identity",position="stack") + facet_grid(~Site,scales="free") + labs(title="ASV abundance of negative controls and blanks",x="Sample Name") + theme(legend.position="none")
+```
+
+All samples
+Before decontaminant removal  
+```{r}
+ov.decon.bef.na <- ps.bold %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Family") + geom_bar(stat="identity",position="stack") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset",x="Sample Name") + theme(legend.position="none")
+```
+```{r}
+ov.decon.bef <- ps.bold %>% subset_taxa(!is.na(Phylum)) %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Family") + geom_bar(stat="identity",position="stack") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset",x="Sample Name") + theme(legend.position="none")
+```
+
+After decontaminant removal  
+```{r}
+ov.decon.na <- decontam.ps.bold  %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Family") + 
+  geom_bar(stat="identity",position="stack") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset after decontaminant removal",x="Sample Name") + theme(legend.position="none")
+```
+```{r}
+ov.decon <- decontam.ps.bold %>% subset_taxa(!is.na(Phylum))  %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Family") + 
+  geom_bar(stat="identity",position="stack") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset after decontaminant removal",x="Sample Name") + theme(legend.position="none")
+```
+
+After negative control ASV removal  
+```{r}
+ov.neg.na <- prune.decontam.ps.bold %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset after subtracting number of ASVs in negative controls ",x="Sample Name")+ theme(legend.position="none")
+
+ov.neg <- prune.decontam.ps.bold  %>% subset_taxa(!is.na(Phylum)) %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset after subtracting number of ASVs in negative controls ",x="Sample Name")+ theme(legend.position="none")
+```
+
+```{r}
+cowplot::plot_grid(ov.decon.bef.na,ov.decon.na,ov.neg.na)
+```
+```{r}
+cowplot::plot_grid(ov.decon.bef,ov.decon,ov.neg)
+```
+
+# Session Info   
+```{r}
+saveRDS(decontam.ps.bold,paste0(dir_results,"/decontam.ps.bold.rds"))
+
+saveRDS(prune_c.ps,paste0(dir_results,"/prune.decontam.ps.bold.keepblanks.rds"))
+saveRDS(prune.decontam.ps.bold,paste0(dir_results,"/prune.decontam.ps.bold.rds"))
+```
+
+```{r}
+save.image(paste0(dir_data,'/07_BOLDBlanks.RData'))
+```
+
+```{r}
+sessionInfo()
+```
+
