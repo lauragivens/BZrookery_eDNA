@@ -1,0 +1,302 @@
+
+# Load  
+Load libraries  
+```{r,message=FALSE}
+library(phyloseq)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(vegan)
+library(lme4)
+```
+
+Load data  
+```{r load}
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+
+#ps.nt <- readRDS(paste0(dir_results,"*.rds"))
+ps.mar <- readRDS(paste0(dir_results,"/prune.decontam.ps.troph.rds"))
+ps.bold <- readRDS(paste0(dir_results,"/prune.decontam.ps.bold.rds"))
+ps.mar <- ps.mar %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
+ps.bold <- ps.bold %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
+
+#taxa_nt <- readRDS(paste0(dir_results,"*.rds"))
+taxa_mar <- readRDS(paste0(dir_results,"/taxtable.wtroph.rds"))
+taxa_bold <- readRDS(paste0(dir_results,"/taxtable.bold.rds"))
+
+meta <- readRDS(paste0(dir_results,"/metadata.edit.rds"))
+samplelist <- meta %>% filter(Rookery!="Practice" & Rookery !="Blank")
+```
+
+Convert rookery to 0/1  
+```{r}
+samplelist<- samplelist %>% mutate(RookeryBinary = case_when(Rookery=="Rookery" ~ 1,
+                                Rookery!="Rookery" ~ 0),.after=Rookery )
+samplelist <- samplelist %>% mutate(NewName=word(rownames(.),sep="_",end=2))
+sample_data(ps.mar) <- samplelist
+sample_data(ps.bold) <- samplelist
+```
+
+```{r}
+ggplot2::theme_set(theme_cowplot() + theme(
+  legend.position = "bottom",
+  panel.border = element_rect(color='black'),
+  legend.box.margin = margin(5,5,5,5),
+  legend.spacing = unit(0,"pt"),
+  plot.title = element_text(face="bold"),
+  plot.caption = element_text(face="italic"),
+  text = element_text(size=(15),family="Times"),
+  legend.key.height = unit(10,"pt"),
+  legend.key.width = unit(10,"pt")
+))
+```
+
+# Conversions  
+Presence/absence  
+```{r}
+ps.mar.pa <- ps.mar %>% transform_sample_counts(., function(abund) 1*(abund > 0))
+ps.bold.pa <- ps.bold %>% transform_sample_counts(., function(abund) 1*(abund > 0))
+```
+
+Relative abundance  
+```{r}
+ps.mar.rel <- ps.mar %>% transform_sample_counts(.,function(x) x/sum(x) ) 
+ps.bold.rel <- ps.bold %>% transform_sample_counts(.,function(x) x/sum(x) ) 
+```
+
+Vegan-ready  
+```{r}
+tab.mar <- otu_table(ps.mar) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.bold <- otu_table(ps.bold) %>% as.matrix() %>% as.data.frame() %>% t()
+```
+
+```{r}
+tab.mar.pa <- otu_table(ps.mar.pa) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.bold.pa <- otu_table(ps.bold.pa) %>% as.matrix() %>% as.data.frame() %>% t()
+```
+
+```{r}
+tab.mar.rel <- otu_table(ps.mar.rel) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.bold.rel <- otu_table(ps.bold.rel) %>% as.matrix() %>% as.data.frame() %>% t()
+```
+
+# 1. Analysis (Fish)  
+Select only fish BOLD samples (since the mar dataset is already only chordates)
+May need to further subsample this actually
+```{r}
+ps.bold.pa.fsh <- ps.bold.pa %>% subset_taxa(Phylum=="Chordata" & Class!="Ascidiacea" & Class != "Reptilia" & Class != "Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
+tab.bold.pa.fsh <- otu_table(ps.bold.pa.fsh) %>% as.matrix() %>% as.data.frame() %>% t()
+```
+
+## Jaccard distance  
+```{r}
+jacc.mar.dist <- distance(ps.mar.pa,method='jaccard')
+```
+```{r}
+jacc.bold.fsh.dist <- distance(ps.bold.pa.fsh,method='jaccard')
+```
+
+### distance-based Redundancy analysis   
+We want to know how much variation in community composition can be explained by the environmental variables we measured.  
+To do that, we are going to use a distance-based redundancy analysis (db-RDA) to identify the significant variables. (Different from a regular RDA because it can use non-Euclidean dissimilarity indices - if you use a Euclidean index, you will get the same result as rda() ).   
+
+Make base rda  
+```{r}
+#using phyloseq
+#rda.0.mar <- ordinate(ps.mar.pa,distance=jacc.mar.dist)
+#rda.0.bold <- ordinate(ps.bold.pa.fsh,distance=jacc.bold.dist)
+
+#using vegan
+rda.0.mar <- dbrda(tab.mar.pa~1,data=samplelist)
+rda.0.bold.fsh <- dbrda(tab.bold.pa.fsh~1,data=samplelist)
+```
+
+Add environmental variables  
+```{r}
+#using phyloseq  
+#rda.jacc.mar <- ordinate(ps.mar.pa,method="RDA",distance=jacc.mar.dist,formula=Site+Month+Side+RookeryBinary)
+#rda.jacc.bold.fsh <- ordinate(ps.bold.pa.fsh,method="RDA",distance=jacc.bold.fsh.dist,formula=Site+Month+Side+RookeryBinary)
+
+#using vegan 
+rda.jacc.mar <- dbrda(jacc.mar.dist ~ Site+Month+Side+RookeryBinary,samplelist)
+rda.jacc.bold.fsh <- dbrda(jacc.bold.fsh.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.fsh))))
+```
+
+Calculate significance  
+```{r}
+#step.mar <- ordistep(rda.0.mar,scope=formula(rda.jacc.mar),perm.max=1000)
+#step.bold.fsh <- ordistep(rda.0.bold.fsh,scope=formula(rda.jacc.bold.fsh),perm.max=1000)
+
+step.mar <- vegan::anova.cca(rda.jacc.mar,permutations=1000,by='terms') #anova.cca performs an ANOVA like permutation test for RDA to assess the significance of constraints  
+step.bold.fsh <- vegan::anova.cca(rda.jacc.bold.fsh,permutations=1000,by='terms')
+```
+
+```{r}
+step.mar
+```
+
+```{r}
+step.bold.fsh
+```
+
+#### Visualize  
+```{r}
+plot_ordination(ps.mar.pa,rda.jacc.mar,color="Rookery",shape="Side") + facet_wrap(~Site)
+```
+
+```{r}
+plot_ordination(ps.bold.pa.fsh,rda.jacc.bold.fsh,color="Rookery",shape="Side") + facet_wrap(~Site)
+```
+
+```{r}
+arrow_map_rda = aes(xend = dbRDA1, 
+                yend = dbRDA2,
+                x = 0, y = 0, 
+                shape = NULL, color = NULL,label=labels
+                )
+label_map_rda = aes(x = 1.5 * dbRDA1, 
+                y = 1.5 * dbRDA2, 
+                shape = NULL, color = NULL,label=labels
+                )
+arrowhead = arrow(length = unit(0.03, "npc"))
+
+# get scores from rda  
+sigscrs_rda_mar <- scores(rda.jacc.mar,display="bp") %>% as.data.frame() %>% filter(., abs(dbRDA1)>0.05 & abs(dbRDA2)>0.05)
+# add labels  
+arrowdf_rda_mar <- data.frame(labels = rownames(sigscrs_rda_mar), sigscrs_rda_mar)
+
+plot_ordination(ps.mar.pa,rda.jacc.mar) + 
+  geom_point(aes(color=Rookery)) + 
+  geom_segment(arrow_map_rda, data=arrowdf_rda_mar,arrow=arrowhead) + #add vector line  
+  #geom_text(label_map_rda, size = 4, data = arrowdf_rda_mar, color = "black")  #add label 
+    ggrepel::geom_text_repel(label_map_rda,data = arrowdf_rda_mar, 
+                           cex = 4, direction = "both", 
+                           segment.size = 0.25,color="black") #+ facet_wrap(~Site)
+```
+
+### PERMANOVA  
+```{r}
+adonis.jacc.mar <- vegan::adonis2(jacc.mar.dist~Site+Month+Side+RookeryBinary,samplelist,perm=1000,by='terms')
+adonis.jacc.mar
+
+
+adonis.jacc.bold.fsh <- vegan::adonis2(jacc.bold.fsh.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.fsh))),perm=1000,by='terms')
+adonis.jacc.bold.fsh
+```
+
+### test strata  
+```{r}
+perm.OR <-how(nperm=999)
+setBlocks(perm.OR) <- with(samplelist,Month)
+# vegan::adonis2(obs.richness~Location*Season,permutations=perm.OR,meta.subset.m)
+
+ vegan::adonis2(jacc.mar.dist~Site+Side+RookeryBinary,samplelist,by='terms',permutations=perm.OR)
+```
+
+## GLM 
+```{r}
+
+```
+
+
+
+# 2. Analysis (non-fish)  
+```{r}
+ps.bold.pa.othr <- ps.bold.pa  %>% subset_taxa(Phylum=="Chordata" & Class!="Actinopterygii" & Class != "Ascidiacea") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
+tab.bold.pa.othr <- otu_table(ps.bold.pa.othr) %>% as.matrix() %>% as.data.frame() %>% t()
+
+jacc.bold.othr.dist <- distance(ps.bold.pa.othr,method='jaccard')
+
+rda.jacc.bold.othr <- dbrda(jacc.bold.othr.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.othr))))
+
+adonis.jacc.bold.othr <- vegan::adonis2(jacc.bold.othr.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.othr))),perm=1000,by='terms')
+adonis.jacc.bold.othr
+
+plot_ordination(ps.bold.pa.othr,rda.jacc.bold.othr,color="Rookery",shape="Side") + facet_wrap(~Site)
+```
+
+```{r}
+ps.bold.rel.brd <- ps.bold.rel  %>% subset_taxa(Class=="Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
+tab.bold.rel.brd <- otu_table(ps.bold.rel.brd) %>% as.matrix() %>% as.data.frame() %>% t()
+
+bray.bold.brd.dist <- distance(ps.bold.rel.brd,method='bray')
+
+rda.bray.bold.brd <- dbrda(bray.bold.brd.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))))
+
+adonis.bray.bold.brd <- vegan::adonis2(bray.bold.brd.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))),perm=1000,by='terms')
+adonis.bray.bold.brd
+
+perm.OR2 <-how(nperm=999)
+setBlocks(perm.OR2) <- with(as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))),Month)
+ vegan::adonis2(bray.bold.brd.dist~Site+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))),by='terms',permutations=perm.OR2)
+
+plot_ordination(ps.bold.rel.brd,rda.bray.bold.brd,color="Rookery",shape="Side") + facet_wrap(~Site)
+```
+
+# 3. Analysis (Community)   
+## Jaccard distance  
+```{r}
+jacc.bold.dist <- distance(ps.bold.pa,method='jaccard')
+```
+
+### distance-based Redundancy analysis   
+We want to know how much variation in community composition can be explained by the environmental variables we measured.  
+To do that, we are going to use a distance-based redundancy analysis (db-RDA) to identify the significant variables. (Different from a regular RDA because it can use non-Euclidean dissimilarity indices - if you use a Euclidean index, you will get the same result as rda() ).   
+
+Make base rda  
+```{r}
+rda.0.bold <- dbrda(tab.bold.pa~1,data=samplelist)
+```
+
+Add environmental variables  
+```{r}
+rda.jacc.bold <- dbrda(jacc.bold.dist ~ Site+Month+Side+RookeryBinary,samplelist)
+```
+
+Calculate significance  
+```{r}
+step.bold <- vegan::anova.cca(rda.jacc.bold,permutations=1000,by='terms')
+```
+
+```{r}
+step.bold
+```
+
+#### Visualize  
+```{r}
+plot_ordination(ps.bold.pa,rda.jacc.bold,color="Rookery",shape="Side") + facet_wrap(~Site)
+```
+
+### PERMANOVA  
+```{r}
+adonis.jacc.bold <- vegan::adonis2(jacc.bold.dist~Site+Month+Side+RookeryBinary,samplelist,perm=1000,by='terms')
+adonis.jacc.bold
+```
+
+## GLM  
+
+# 4. Heatmap?   
+```{r}
+v.tab.mar.rel <- as.data.frame(tab.mar.rel) %>% rownames_to_column() %>% merge(.,(samplelist %>% rownames_to_column())) %>% mutate(NewName=word(rowname,sep="_",end = 2),.after=rowname)
+```
+
+```{r}
+plot_heatmap((ps.bold.rel.brd %>% merge_samples(.,"NewName")),method="RDA",distance="bray",taxa.label = "Species", sample.order="Rookery")
+
+tab.bold.rel.brd
+rel.brd.meta <- as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))) %>% rownames_to_column() %>% as.data.frame()
+new.brd <- merge(rel.brd.meta,(as.data.frame(tab.bold.rel.brd) %>% rownames_to_column() ))
+pheatmap::pheatmap(tab.bold.pa.brd,annotation_row = )
+```
+
+
+# Session Info   
+```{r}
+save.image("RData/08_Analysis.RData")
+```
+
+```{r}
+sessionInfo()
+```
+
