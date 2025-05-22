@@ -10,21 +10,21 @@ use_condaenv(condaenv = 'cutadapt', required=TRUE)
 
 # set directories
 setwd('/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI')
-dir_home <- getwd()
-dir_raw<-paste0(dir_home,'/fastq')
-dir_cut<-paste0(dir_home,'/cutadapt')
-if(!dir.exists(dir_cut)) dir.create(dir_cut)
+dir_home <- getwd() #current working directory  
+dir_raw<-paste0(dir_home,'/fastq') #folder where raw fastq files are located
+dir_cut<-paste0(dir_home,'/cutadapt') #folder to write cutadapt results to 
+if(!dir.exists(dir_cut)) dir.create(dir_cut)  #create the cutadapt directory if it does not exist  
 
-dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
-if(!dir.exists(dir_data)) dir.create(dir_data)
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata' #folder to save Rdata files to 
+if(!dir.exists(dir_data)) dir.create(dir_data) #create the folder if it does not exist 
   
-cutadapt<-"/Users/lauragivens/miniconda3/envs/cutadapt/bin/cutadapt"
+cutadapt<-"/Users/lauragivens/miniconda3/envs/cutadapt/bin/cutadapt" #location of cutadapt on the machine  
 # primer sequences
 # sequences and citations backtracked from SERC metabarcoding digital notebook 
 # citation:https://frontiersinzoology.biomedcentral.com/articles/10.1186/1742-9994-10-34
 FwdPrimer=c("GGWACWGGWTGAACWGTWTAYCCYCC") #ILL-mlLCOF1
 FwdPrimerRC=dada2:::rc(FwdPrimer) 
-#RevPrimer=c("TAIACYTCIGGRTGICCRAARAAYCA") #ILL-igHCO2198R #rc does not recognzie I
+
 RevPrimer=c("TANACYTCNGGRTGNCCRAARAAYCA") #ILL-jgHCO2198R
 RevPrimerRC=dada2:::rc(RevPrimer)
 
@@ -80,7 +80,7 @@ plotQualityProfile(fnRs_trim[3:4])
 ggsave(filename=file.path(dir_cut,"Read_R_quality_profile_trim.pdf"))
 
 
-# now go run 02.5_Trim_QC.sh to check out where to truncate reads
+# now go run 02b_fastqc.sh to check out where to truncate reads
 
 # Step 3: QC 
 trimfnFs <- sort(list.files(dir_trim, pattern="R1_001.fastq.gz", full.names = TRUE))
@@ -98,7 +98,7 @@ out <- filterAndTrim(
   trimfnRs, 
   filtRs, 
   truncLen=c(260,260), #truncate reads after n bases
-  #trimLeft=0, #number of nucleotiees to remove from the start of each read. if both truncLen and trimLeft are provided, filtered reads will have length truncLen-trimLeft
+  #trimLeft=0, #number of nucleotides to remove from the start of each read. if both truncLen and trimLeft are provided, filtered reads will have length truncLen-trimLeft
   maxN=0, #DADA2 requires no Ns
   maxEE=c(2,5), #default DADA2 #max expected errors 
   truncQ=2, #default DADA2
@@ -191,6 +191,6 @@ uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 Sys.Date()
 sessionInfo()
 save.image("/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/BZrookery_eDNA.RData")
-save.image(paste0(dir_data,"/02_Trim_QC.RData"))\
+save.image(paste0(dir_data,"/02_Trim_QC.RData"))
 
 # assembled with help from https://benjjneb.github.io/dada2/tutorial.html
