@@ -1,20 +1,25 @@
 # BZrookery_eDNA
 analysis of rookery/non-rookery mangrove eDNA samples 
 
-This is a workflow outlining the bioinformatic processing steps taken after sequencing results were returned. 
+This is a workflow outlining the bioinformatic processing steps taken after sequencing is completed, making use of the command line and R.  
 
-You will need the following: 
-## Conda environment  
-https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html  
+## Install the following onto your machine:  
+I recommend using conda to build separate conda environments for these tools.  
+
+### Conda environment   
+https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html    
  
-### fastqc  
-Download instructions: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/INSTALL.txt
+### fastqc   
+Download instructions: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/INSTALL.txt  
+FastQC is a quality control tool to summarize high throughput sequencing output and identify potential problem areas for each file.  
 
 ### multiqc 
 Github: https://github.com/MultiQC/MultiQC  
+MultiQC will be used to aggregate and summarize the FastQC reports for all files to provide an overview for the entire run.   
 
-### cutadapt  
-Github: https://github.com/marcelm/cutadapt/tree/main
+### cutadapt   
+Github: https://github.com/marcelm/cutadapt/tree/main  
+Cutadapt is used to remove primer sequences.  
 
 ## R packages  
 reticulate
