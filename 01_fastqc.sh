@@ -8,7 +8,7 @@ fastqc --version
 # https://www.bioinformatics.babraham.ac.uk/projects/fastqc/INSTALL.txt
 
 # First, we are going to look at the quality of our reads  
-RAWDIR=/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI #set the RAWDIR variable to the location of the sequencing files  
+RAWDIR=/Sequences #set the RAWDIR variable to the location of the sequencing files  
 OUTDIR=$RAWDIR/FQCreports_raw #name the folder where you want the fastqc reports to go  
 mkdir -p $OUTDIR #make the OUTDIR folder
 
