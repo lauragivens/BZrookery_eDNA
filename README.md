@@ -4,9 +4,7 @@ analysis of rookery/non-rookery mangrove eDNA samples
 This is a workflow outlining the bioinformatic processing steps taken after sequencing is completed, making use of the command line and R.  
 
 ## Install the following onto your machine:  
-I recommend using conda to build separate conda environments for these tools.  
-
-### Conda environment   
+I recommend using conda to build separate conda environments for these tools.   
 https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html    
  
 ### FastQC    
@@ -22,13 +20,13 @@ Github: https://github.com/marcelm/cutadapt/tree/main
 Cutadapt is used to remove primer sequences.  
 
 ## R packages  
-reticulate
-dada2
-data.table
-tidyverse
-Biostrings
-lulu
-taxonomizr  
+reticulate  
+dada2  
+data.table  
+tidyverse  
+Biostrings  
+lulu  
+taxonomizr   
 phyloseq  
 vegan  
 decontam  
