@@ -9,11 +9,11 @@ I recommend using conda to build separate conda environments for these tools.
 ### Conda environment   
 https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html    
  
-### fastqc   
+### FastQC    
 Download instructions: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/INSTALL.txt  
 FastQC is a quality control tool to summarize high throughput sequencing output and identify potential problem areas for each file.  
 
-### multiqc 
+### MultiQC 
 Github: https://github.com/MultiQC/MultiQC  
 MultiQC will be used to aggregate and summarize the FastQC reports for all files to provide an overview for the entire run.   
 
