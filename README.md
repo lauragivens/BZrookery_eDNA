@@ -25,11 +25,11 @@ dada2
 data.table  
 tidyverse  
 Biostrings  
-lulu  
+lulu: https://github.com/tobiasgf/lulu    
 taxonomizr   
 phyloseq  
 vegan  
-decontam  
+decontam: https://github.com/benjjneb/decontam   
 ggplot2  
 cowplot  
 
