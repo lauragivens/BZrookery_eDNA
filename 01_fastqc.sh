@@ -1,11 +1,23 @@
 #!/bin/bash
+
+############################# Install #############################  
+
+# FastQC  https://www.bioinformatics.babraham.ac.uk/projects/fastqc/INSTALL.txt
+conda create --name fastqc bioconda::fastqc
+# activate the environment  
 conda activate fastqc 
-conda install multiqc
+# install multiqc inside the environment
+# conda install multiqc #does not seem to work with m1 mac
+conda install -c bioconda -c conda-forge multiqc #for M1 Mac
+pip install importlib-metadata
+# should now have both FastQC and MultiQC in the same conda environment  
+
+#check versions  
 fastqc --version 
 #v0.12.1
+multiqc --version
+#v1.10.1
 
-# install instructions for fastqc here:  
-# https://www.bioinformatics.babraham.ac.uk/projects/fastqc/INSTALL.txt
 
 # First, we are going to look at the quality of our reads  
 RAWDIR=/Sequences #set the RAWDIR variable to the location of the sequencing files  
