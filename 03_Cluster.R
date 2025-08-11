@@ -1,4 +1,6 @@
 library(Biostrings)
+library(devtools)
+install_github("tobiasgf/lulu")
 library(lulu)
 
 # cluster into ASVs
