@@ -5,6 +5,18 @@ library(data.table)
 library(tidyverse)
 library(Biostrings)
 
+
+# outside of R environment (hashtag out when running inside R)
+# for Apple silicon chip  
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda config --set channel_priority strict
+CONDA_SUBDIR=osx-64 conda create -n cutadapt cutadapt
+conda activate cutadapt
+cutadapt --version
+# v5.1
+
+# inside of R environment  
 # activate conda environment
 use_condaenv(condaenv = 'cutadapt', required=TRUE)
 
