@@ -1,6 +1,6 @@
 library(Biostrings)
 library(devtools)
-install_github("tobiasgf/lulu")
+#install_github("tobiasgf/lulu")
 library(lulu)
 
 # cluster into ASVs
@@ -13,8 +13,11 @@ library(lulu)
 # requires a fasta file of sequences
 
 ###########################################
-dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
-dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+# set directories
+setwd('/Users/lauragivens/Downloads/Demo')
+
+dir_data <- '/Users/lauragivens/Downloads/Demo/Rdata'
+dir_results <- "/Users/lauragivens/Downloads/Demo/cutadapt/results"
 uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 seqtab.nochim <- readRDS(file=paste0(dir_results,'/seqtab.nochim.rds'))
                          
@@ -36,9 +39,9 @@ head(names(lulu.uniqueseqs),2)
 
 ### doing this outside of R
 ## First produce a blastdatabase with the OTUs
-# makeblastdb -in dada2-uniqueseqs.fasta -parse_seqids -dbtype nucl
+ makeblastdb -in dada2-uniqueseqs.fasta -parse_seqids -dbtype nucl
 ## Then blast the OTUs against the database
-# blastn -db dada2-uniqueseqs.fasta -outfmt '6 qseqid sseqid pident' -out match_list.txt -qcov_hsp_perc 80 -perc_identity 84 -query dada2-uniqueseqs.fasta
+ blastn -db dada2-uniqueseqs.fasta -outfmt '6 qseqid sseqid pident' -out match_list.txt -qcov_hsp_perc 80 -perc_identity 84 -query dada2-uniqueseqs.fasta
 
 ## read in 
 match_list <- read_delim(paste0(dir_results,'/match_list.txt'),col_names=F,delim='\t')

@@ -8,12 +8,12 @@ library(Biostrings)
 
 # outside of R environment (hashtag out when running inside R)
 # for Apple silicon chip  
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda config --set channel_priority strict
-CONDA_SUBDIR=osx-64 conda create -n cutadapt cutadapt
-conda activate cutadapt
-cutadapt --version
+#conda config --add channels bioconda
+#conda config --add channels conda-forge
+#conda config --set channel_priority strict
+#CONDA_SUBDIR=osx-64 conda create -n cutadapt cutadapt
+#conda activate cutadapt
+#cutadapt --version
 # v5.1
 
 # inside of R environment  
@@ -21,13 +21,13 @@ cutadapt --version
 use_condaenv(condaenv = 'cutadapt', required=TRUE)
 
 # set directories
-setwd('/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI')
+setwd('/Users/lauragivens/Downloads/Demo')
 dir_home <- getwd() #current working directory  
 dir_raw<-paste0(dir_home,'/fastq') #folder where raw fastq files are located
 dir_cut<-paste0(dir_home,'/cutadapt') #folder to write cutadapt results to 
 if(!dir.exists(dir_cut)) dir.create(dir_cut)  #create the cutadapt directory if it does not exist  
 
-dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata' #folder to save Rdata files to 
+dir_data <- '/Users/lauragivens/Downloads/Demo/Rdata' #folder to save Rdata files to 
 if(!dir.exists(dir_data)) dir.create(dir_data) #create the folder if it does not exist 
   
 cutadapt<-"/Users/lauragivens/miniconda3/envs/cutadapt/bin/cutadapt" #location of cutadapt on the machine  
@@ -86,10 +86,10 @@ for(i in seq_along(fnFs)) {
 # determine how much to trim each based on quality profile graphs
 # check quality of the F of samples 3 & 4
 plotQualityProfile(fnFs_trim[3:4]) 
-ggsave(filename=file.path(dir_cut,"Read_F_quality_profile_trim.pdf"))
+ggsave(filename=file.path(dir_cut,"Read_F_quality_profile_trim.pdf"),width=10,height=10)
 # check quality of the R of samples 3 & 4
 plotQualityProfile(fnRs_trim[3:4]) 
-ggsave(filename=file.path(dir_cut,"Read_R_quality_profile_trim.pdf"))
+ggsave(filename=file.path(dir_cut,"Read_R_quality_profile_trim.pdf"),width=10,height=10)
 
 
 # now go run 02b_fastqc.sh to check out where to truncate reads
@@ -109,7 +109,7 @@ out <- filterAndTrim(
   filtFs, 
   trimfnRs, 
   filtRs, 
-  truncLen=c(260,260), #truncate reads after n bases
+  truncLen=c(280,250), #truncate reads after n bases
   #trimLeft=0, #number of nucleotides to remove from the start of each read. if both truncLen and trimLeft are provided, filtered reads will have length truncLen-trimLeft
   maxN=0, #DADA2 requires no Ns
   maxEE=c(2,5), #default DADA2 #max expected errors 
@@ -127,16 +127,20 @@ head(out)
 #truncLen=c(275,275),maxEE=c(2,5) less than 10% of reads are passing...
 #truncLen=c(260,260),maxEE=c(2,5) >90% of reads pass
 
+# lost reads or something  
+filtFs <- c(filtFs[1:5],filtFs[7:12])  
+filtRs <- c(filtRs[1:5],filtRs[7:12])
+
 # Step 4: learn errors
-errF <- learnErrors(filtFs, multithread=TRUE)
-errR <- learnErrors(filtRs, multithread=TRUE)
+errF <- learnErrors(filtFs,nbases = 1e9, multithread=TRUE)
+errR <- learnErrors(filtRs,nbases = 1e9, multithread=TRUE)
 
 # plot errors (sanity check) 
 ## red line shows error rates expected under nominal def of Q score; estimated error rates are black line - ideally, estimated error rates should be a good fit for the observed error rates (points)
 plotErrors(errF,nominalQ=TRUE) 
-ggsave(filename=file.path(dir_trim,"ErrorRates_Plot_F.pdf"))
+ggsave(filename=file.path(dir_trim,"ErrorRates_Plot_F.pdf"),width=10,height=10)
 plotErrors(errR,nominalQ=TRUE)
-ggsave(filename=file.path(dir_trim,"ErrorRates_Plot_R.pdf"))
+ggsave(filename=file.path(dir_trim,"ErrorRates_Plot_R.pdf"),width=10,height=10)
 
 # Step 5: denoise
 dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
@@ -202,7 +206,6 @@ uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 # Step 11: return info 
 Sys.Date()
 sessionInfo()
-save.image("/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/BZrookery_eDNA.RData")
 save.image(paste0(dir_data,"/02_Trim_QC.RData"))
 
 # assembled with help from https://benjjneb.github.io/dada2/tutorial.html
