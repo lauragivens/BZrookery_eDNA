@@ -31,6 +31,7 @@ echo starting BLAST
 echo
 blastn -db /hpc/group/schultzlab/lag66/core_nt -query $FILES/dada2-uniqueseqs.fasta \
 		-perc_identity 97 \
+			-qcov_hsp_perc 80 \
 			-word_size 30 \
 				-outfmt 6 \
 					-num_threads 4 \
