@@ -15,14 +15,14 @@ blast_nt_output <- read.delim('dada2.uniques.BLAST.default.tsv',header = FALSE)
 colnames(blast_nt_output) <- c('qseqid','sseqid','pident','length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore')
 
 # upload accession - to - taxid files
-taxid_mar <- read.csv('taxonomizr.mar.taxaID.csv')
-taxresults_mar <- read.csv('taxonomizr.mar.taxResults.csv')
-t2 <- readRDS('taxonomizr.mar.merge.rds')
+taxid_mar <- read.csv('taxonomizr.mar.v2.taxaID.csv')
+taxresults_mar <- read.csv('taxonomizr.mar.v2.taxResults.csv')
+t2 <- readRDS('taxonomizr.mar.v2.merge.rds')
 names(t2)[4:10] <- str_to_title(names(t2)[4:10])
 
-taxid <- read.csv('taxonomizr.taxaID.csv')
-taxresults <- read.csv('taxonomizr.taxResults.csv')
-t2d <- readRDS('taxonomizr.merge.rds')
+taxid <- read.csv('taxonomizr.v2.taxaID.csv')
+taxresults <- read.csv('taxonomizr.v2.taxResults.csv')
+t2d <- readRDS('taxonomizr.v2.merge.rds')
 names(t2d)[4:10] <- str_to_title(names(t2d)[4:10])
 t2dd <- distinct(t2d)
 
@@ -66,6 +66,15 @@ for (i in 1:dim(qseqid_unique)[1]) {
   qseqid_unique[i,] <- truncated
 }
 taxa_final <- qseqid_unique %>% mutate(.,seqid=word(qseqid,sep=";"),.before=1) 
+taxa_final <- taxa_final %>% mutate(Species=case_when(str_detect(Species,"sp.") ~ NA,
+                                                            str_detect(Species,"spp.") ~ NA,
+                                                            str_detect(Species,"cf.") ~ NA,
+                                                            str_detect(Species,"uncultur") ~ NA,
+                                                            str_detect(Species,"environ") ~ NA,
+                                                            str_detect(Species,"acterium") ~ NA,
+                                                            str_count(Species," ") != 1 ~ NA,
+                                                            .default=Species)
+) 
 rownames(taxa_final) <- taxa_final$seqid
 taxa_sub <- select(taxa_final, c(15:21))
 
@@ -100,6 +109,16 @@ for (i in 1:dim(qseqid_nt_unique)[1]) {
   qseqid_nt_unique[i,] <- truncated_nt
 }
 taxa_nt_final <- qseqid_nt_unique %>% mutate(.,seqid=word(qseqid,sep=";"),.before=1) 
+taxa_nt_final <- taxa_nt_final %>% mutate(Species=case_when(str_detect(Species,"sp.") ~ NA,
+                                                      str_detect(Species,"spp.") ~ NA,
+                                                      str_detect(Species,"cf.") ~ NA,
+                                                      str_detect(Species,"uncultur") ~ NA,
+                                                      str_detect(Species,"environ") ~ NA,
+                                                      str_detect(Species,"acterium") ~ NA,
+                                                      str_count(Species," ") != 1 ~ NA,
+                                                      .default=Species)
+) 
+
 rownames(taxa_nt_final) <- taxa_nt_final$seqid
 taxa_nt_sub <- select(taxa_nt_final, c(15:21))
 
@@ -160,31 +179,31 @@ ps.nt.troph
 
 ##########################################################################################################
 # Save mar
-saveRDS(ps,paste0(dir_results,"/ps.rds"))
-saveRDS(ps.troph,paste0(dir_results,"/ps.troph.rds"))
+saveRDS(ps,paste0(dir_results,"/ps.v2.rds"))
+saveRDS(ps.troph,paste0(dir_results,"/ps.v2.troph.rds"))
 
-saveRDS(taxa_sub,paste0(dir_results,"/taxtable.rds"))
-saveRDS(taxa_troph,paste0(dir_results,"/taxtable.wtroph.rds"))
+saveRDS(taxa_sub,paste0(dir_results,"/taxtable.v2.rds"))
+saveRDS(taxa_troph,paste0(dir_results,"/taxtable.v2.wtroph.rds"))
 saveRDS(curated_asv,paste0(dir_results,"/asvtable.rds"))
 saveRDS(samplelist,paste0(dir_results,'/metadata.rds'))
 
 
-write.csv(taxa_sub,paste0(dir_results,"/taxtable.csv"))
-write.csv(taxa_troph,paste0(dir_results,"/taxtable.wtroph.csv"))
+write.csv(taxa_sub,paste0(dir_results,"/taxtable.v2.csv"))
+write.csv(taxa_troph,paste0(dir_results,"/taxtable.v2.wtroph.csv"))
 write.csv(curated_asv,paste0(dir_results,"/asvtable.csv"))
 write.csv(samplelist,paste0(dir_results,'/metadata.csv'))
 
 # Save nt 
-saveRDS(ps.nt,paste0(dir_results,"/ps.nt.rds"))
-saveRDS(ps.nt.troph,paste0(dir_results,"/ps.nt.troph.rds"))
+saveRDS(ps.nt,paste0(dir_results,"/ps.v2.nt.rds"))
+saveRDS(ps.nt.troph,paste0(dir_results,"/ps.v2.nt.troph.rds"))
 
-saveRDS(taxa_nt_sub,paste0(dir_results,"/taxtable.nt.rds"))
-saveRDS(taxa_nt_troph,paste0(dir_results,"/taxtable.nt.wtroph.rds"))
+saveRDS(taxa_nt_sub,paste0(dir_results,"/taxtable.v2.nt.rds"))
+saveRDS(taxa_nt_troph,paste0(dir_results,"/taxtable.v2.nt.wtroph.rds"))
 
-write.csv(taxa_nt_sub,paste0(dir_results,"/taxtable.nt.csv"))
-write.csv(taxa_nt_troph,paste0(dir_results,"/taxtable.nt.wtroph.csv"))
-
-
+write.csv(taxa_nt_sub,paste0(dir_results,"/taxtable.v2.nt.csv"))
+write.csv(taxa_nt_troph,paste0(dir_results,"/taxtable.v2.nt.wtroph.csv"))
 
 
-save.image(paste0(dir_data,'/06_toPhyloseq.RData'))
+
+
+save.image(paste0(dir_data,'/06_toPhyloseq_v2.RData'))

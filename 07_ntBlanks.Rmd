@@ -19,11 +19,11 @@ Load data
 dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 
-ps <- readRDS(paste0(dir_results,"/ps.ntnt.rds"))
-ps.troph <- readRDS(paste0(dir_results,"/ps.nt.troph.rds"))
+ps <- readRDS(paste0(dir_results,"/ps.v2.nt.rds"))
+ps.troph <- readRDS(paste0(dir_results,"/ps.v2.nt.troph.rds"))
 
-taxa <- readRDS(paste0(dir_results,"/taxtable.nt.rds"))
-taxa_troph <- readRDS(paste0(dir_results,"/taxtable.nt.wtroph.rds"))
+taxa <- readRDS(paste0(dir_results,"/taxtable.v2.nt.rds"))
+taxa_troph <- readRDS(paste0(dir_results,"/taxtable.v2.nt.wtroph.rds"))
 curated_lulu <- readRDS(paste0(dir_results,'/lulu-clustertable.rds'))
 curated_asv <- readRDS(paste0(dir_results,"/asvtable.rds"))
 samplelist <- readRDS(paste0(dir_results,'/metadata.rds'))
@@ -90,13 +90,13 @@ What percent of taxa do those ASVs comprise?
 ```{r}
 ntaxa(prune_taxa(taxa_names(ps)%in%blank.asvs,ps)) / ntaxa(ps) * 100
 ```
-4.63% of taxa    
+10.21% of taxa    
 
 What percent of sequences do those ASVs comprise?  
 ```{r}
 sum(taxa_sums(prune_taxa(taxa_names(ps)%in%blank.asvs,ps))) / sum(taxa_sums(ps)) * 100
 ```
-88.08% of the sequences  
+86.37% of the sequences  
 
 And how many of those are in the blank samples themselves?  
 ```{r}
@@ -251,13 +251,13 @@ What percent of taxa do those ASVs comprise?
 ```{r}
 length(contamdf.names) / ntaxa(ps) * 100
 ```
-0.647% of taxa     
+1.17% of taxa     
 
 What percent of sequences do those ASVs comprise?  
 ```{r}
 sum(taxa_sums(prune_taxa(taxa_names(ps)%in%contamdf.names,ps))) / sum(taxa_sums(ps)) * 100
 ```
-0.09% of the sequences  
+0.39% of the sequences  
 
 ```{r}
 sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%contamdf.names,.)) %>% summary()
@@ -358,7 +358,6 @@ otu_table(decontam.ps.troph)[b[1],a] #samples from that sampling event
 #after
 otu_table(prune_a.ps)[b[1],a]
 ```
-
 ```{r}
 for (n in 1:length(sample_events)) { #for each sampling day 
  
@@ -367,11 +366,15 @@ for (n in 1:length(sample_events)) { #for each sampling day
 
 for (p in 1:length(c)) { #for each negative control sample
    
-  b <- prune_samples(sample_names(prune_a.ps)==c[p], #get only the blank sample we're working with
+  b <- tryCatch((prune_samples(sample_names(prune_a.ps)==c[p], #get only the blank sample we're working with
                      prune_a.ps) %>% 
-    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names() #get seqid of asvs in neg control 
+    prune_taxa(taxa_sums(.)>0,.) %>% taxa_names()), #get seqid of asvs in neg control 
+                           error=function(e){return(FALSE)}
+    )
 
-  if (length(b)>0){
+  if (!isFALSE(b)){
+
+  if (length(b)>0) {
   for (i in 1:length(b)) { #for each seq in the neg control 
     
      otudf <- otu_table(prune_a.ps) %>% as.matrix() %>% as.data.frame()
@@ -379,10 +382,10 @@ for (p in 1:length(c)) { #for each negative control sample
      otu_table(prune_a.ps) <- otu_table(as.matrix(otudf),taxa_are_rows = TRUE)
   }
   }
+  }
 }
   
 }
-
 ```
 Check
 ```{r}
@@ -504,7 +507,6 @@ rm(otudf)
 prune_c.ps <- prune_b.ps
 pcr_events <- ps.blanks %>% subset_samples(Site=="PCR") %>% sample_names()
 ```
-
 ```{r}
 for (n in 1:length(pcr_events)) { #for each sample 
  
@@ -587,17 +589,17 @@ prune.decontam.ps.troph %>% subset_samples(Rookery!="Blank" & Rookery!="Practice
 
 # Session Info   
 ```{r}
-saveRDS(decontam.ps.troph,paste0(dir_results,"/decontam.ps.nt.troph.rds"))
+saveRDS(decontam.ps.troph,paste0(dir_results,"/decontam.v2.ps.nt.troph.rds"))
 
-saveRDS(prune_c.ps,paste0(dir_results,"/prune.decontam.ps.nt.troph.keepblanks.rds"))
-saveRDS(prune.decontam.ps.troph,paste0(dir_results,"/prune.decontam.ps.nt.troph.rds"))
+saveRDS(prune_c.ps,paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.keepblanks.rds"))
+saveRDS(prune.decontam.ps.troph,paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.rds"))
 
 saveRDS(samplelist,paste0(dir_results,"/metadata.edit.rds"))
 write_csv(samplelist,paste0(dir_results,"/metadataedit.csv"))
 ```
 
 ```{r}
-save.image('/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata/07_ntBlanks.RData')
+save.image('/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata/07_ntBlanks_v2.RData')
 ```
 
 ```{r}

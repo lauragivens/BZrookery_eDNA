@@ -26,11 +26,11 @@ t1d$taxid <- unlist(taxaId) %>% as.character()
 t2d <- merge(t1d,taxResults,by.x='taxid',all.x=TRUE) %>% rename('qseqid'="V1","sseqid"="V2")
 
 
-write.csv(taxaId,"taxonomizr.taxaID.csv")
-write.csv(taxResults, "taxonomizr.taxResults.csv")
+write.csv(taxaId,"taxonomizr.v2.taxaID.csv")
+write.csv(taxResults, "taxonomizr.v2.taxResults.csv")
 
-write.csv(t2d,'taxonomizr.merge.csv')
-write_rds(t2d,'taxonomizr.merge.rds')
+write.csv(t2d,'taxonomizr.v2.merge.csv')
+write_rds(t2d,'taxonomizr.v2.merge.rds')
 
 
 
@@ -47,11 +47,11 @@ t1 <- marblastResults[1:2] #qseqid sseqid
 t1$taxid <- unlist(martaxaId) %>% as.character()
 t2 <- merge(t1,martaxResults,by.x='taxid',all.x=TRUE) %>% rename('qseqid'="V1","sseqid"="V2")
 
-write.csv(martaxaId,"taxonomizr.mar.taxaID.csv")
-write.csv(martaxResults, "taxonomizr.mar.taxResults.csv")
+write.csv(martaxaId,"taxonomizr.mar.v2.taxaID.csv")
+write.csv(martaxResults, "taxonomizr.mar.v2.taxResults.csv")
 
-write.csv(t2,'taxonomizr.mar.merge.csv')
-write_rds(t2,'taxonomizr.mar.merge.rds')
+write.csv(t2,'taxonomizr.mar.merge.v2.csv')
+write_rds(t2,'taxonomizr.mar.merge.v2.rds')
 
 
-save.image(paste0(dir_data,"/05_AccNo_Tax.RData"))
+save.image(paste0(dir_data,"/05_AccNo_Tax_v2.RData"))
