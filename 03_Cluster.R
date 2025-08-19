@@ -1,3 +1,8 @@
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Biostrings")
+
 library(Biostrings)
 library(devtools)
 #install_github("tobiasgf/lulu")
