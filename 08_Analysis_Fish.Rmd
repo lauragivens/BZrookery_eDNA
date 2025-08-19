@@ -1,0 +1,1145 @@
+---
+title: "08_Analysis_Fish"
+author: "Laura Givens"
+date: "2025-05-28"
+output: html_document
+---
+# Load  
+Load libraries  
+```{r,message=FALSE}
+library(phyloseq)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(vegan)
+library(lme4)
+library(patchwork)
+```
+
+```{r}
+set.seed(999)
+```
+
+Load data  
+```{r load}
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+
+ps.nt <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.rds"))
+ps.mar <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.troph.rds"))
+ps.bold <- readRDS(paste0(dir_results,"/prune.decontam.ps.bold.rds"))
+
+ps.nt <- ps.nt %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
+ps.mar <- ps.mar %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
+ps.bold <- ps.bold %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
+
+taxa_nt <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.rds"))
+taxa_mar <- readRDS(paste0(dir_results,"/taxtable.v2.wtroph.rds"))
+taxa_bold <- readRDS(paste0(dir_results,"/taxtable.bold.rds"))
+
+meta <- readRDS(paste0(dir_results,"/metadata.edit.rds"))
+samplelist <- meta %>% filter(Rookery!="Practice" & Rookery !="Blank")
+```
+
+Or alternatively,  
+```{r}
+load("RData/08_Analysis_Fish.RData")
+```
+
+Convert rookery to 0/1  
+```{r}
+samplelist<- samplelist %>% mutate(RookeryBinary = case_when(Rookery=="Rookery" ~ 1,
+                                Rookery!="Rookery" ~ 0),.after=Rookery )
+samplelist <- samplelist %>% mutate(NewName=word(rownames(.),sep="_",end=2))
+
+sample_data(ps.nt) <- samplelist
+sample_data(ps.mar) <- samplelist
+sample_data(ps.bold) <- samplelist
+```
+
+```{r}
+ggplot2::theme_set(theme_cowplot() + theme(
+  legend.position = "bottom",
+  panel.border = element_rect(color='black'),
+  legend.box.margin = margin(5,5,5,5),
+  legend.spacing = unit(0,"pt"),
+  plot.title = element_text(face="bold"),
+  plot.caption = element_text(face="italic"),
+  text = element_text(size=(15),family="Times"),
+  legend.key.height = unit(10,"pt"),
+  legend.key.width = unit(10,"pt")
+))
+```
+
+# Prune to fish   
+Select only fish BOLD samples (since the mar dataset is already only chordates)
+May need to further subsample this actually
+```{r}
+ps.bold.fsh <- ps.bold %>% subset_taxa(Phylum=="Chordata" & Class!="Ascidiacea" & Class != "Reptilia" & Class != "Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
+```
+
+Select only fish nt samples (since the mar dataset is already only chordates)
+May need to further subsample this actually
+```{r}
+ps.nt.fsh <- ps.nt %>% subset_taxa(Phylum=="Chordata" & Class=="Actinopteri" |  Class == "Chondrichthyes") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
+```
+
+# Conversions  
+Presence/absence  
+```{r}
+ps.nt.pa <- ps.nt.fsh %>% transform_sample_counts(., function(abund) 1*(abund > 0))
+ps.mar.pa <- ps.mar %>% transform_sample_counts(., function(abund) 1*(abund > 0))
+ps.bold.pa <- ps.bold.fsh %>% transform_sample_counts(., function(abund) 1*(abund > 0))
+```
+
+Relative abundance  
+```{r}
+ps.nt.rel <- ps.nt.fsh %>% transform_sample_counts(.,function(x) x/sum(x) ) 
+ps.mar.rel <- ps.mar %>% transform_sample_counts(.,function(x) x/sum(x) ) 
+ps.bold.rel <- ps.bold.fsh %>% transform_sample_counts(.,function(x) x/sum(x) ) 
+```
+
+Log transform  
+```{r}
+ps.nt.log <- ps.nt.fsh %>% transform_sample_counts(., function(x) log(1 + x)) %>% 
+      prune_samples(sample_sums(.) > 0,.)
+ps.mar.log <- ps.mar %>% transform_sample_counts(., function(x) log(1 + x)) %>% 
+      prune_samples(sample_sums(.) > 0,.)
+ps.bold.log <- ps.bold.fsh %>% transform_sample_counts(., function(x) log(1 + x)) %>% 
+      prune_samples(sample_sums(.) > 0,.)
+```
+
+```{r}
+tab.bold <- otu_table(ps.bold.fsh) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.nt <- otu_table(ps.nt.fsh) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.mar <- otu_table(ps.mar) %>% as.matrix() %>% as.data.frame() %>% t()
+
+tab.bold.pa <- otu_table(ps.bold.pa) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.bold.rel <- otu_table(ps.bold.rel) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.bold.log <- otu_table(ps.bold.log) %>% as.matrix() %>% as.data.frame() %>% t()
+
+tab.nt.pa <- otu_table(ps.nt.pa) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.nt.rel <- otu_table(ps.nt.rel) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.nt.log <- otu_table(ps.nt.log) %>% as.matrix() %>% as.data.frame() %>% t()
+
+tab.mar.pa <- otu_table(ps.mar.pa) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.mar.rel <- otu_table(ps.mar.rel) %>% as.matrix() %>% as.data.frame() %>% t()
+tab.mar.log <- otu_table(ps.mar.log) %>% as.matrix() %>% as.data.frame() %>% t()
+
+ps.bold.pa.melt <- psmelt(ps.bold.pa)
+ps.nt.pa.melt <- psmelt(ps.nt.pa)
+ps.mar.pa.melt <- psmelt(ps.mar.pa)
+
+ps.bold.rel.melt <- psmelt(ps.bold.rel)
+ps.nt.rel.melt <- psmelt(ps.nt.rel)
+ps.mar.rel.melt <- psmelt(ps.mar.rel)
+
+ps.nt.log.melt <- psmelt(ps.nt.log)
+ps.bold.log.melt <- psmelt(ps.bold.log)
+ps.mar.log.melt <- psmelt(ps.mar.log)
+```
+
+```{r}
+#ps.mar.pa.melt %>% filter(Abundance > 0) %>% View()
+write.csv((ps.mar.pa.melt %>% filter(Abundance > 0)),
+          file="/Users/lauragivens/Downloads/bzrookery.fish.nozero.csv")
+```
+
+# Normality tests    
+
+## Untransformed  
+Shannon diversity index  
+```{r}
+rich.nt <- diversity(tab.nt,index="shannon")
+rich.mar <- diversity(tab.mar,index="shannon")
+rich.bold <- diversity(tab.bold,index="shannon")
+```
+The only one that passes is the nt dataset  
+```{r}
+shapiro.test(rich.nt)
+shapiro.test(rich.mar)
+shapiro.test(rich.bold)
+```
+
+```{r}
+hist(rich.nt, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.mar, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.bold, main="Shannon diversity", xlab="", breaks=10)
+```
+
+Observed richness  
+```{r}
+obs.nt <- specnumber(tab.nt)
+obs.bold <- specnumber(tab.bold)
+obs.mar <- specnumber(tab.mar)
+```
+Again, the only one that passes is the nt dataset  
+```{r}
+shapiro.test(obs.nt)
+shapiro.test(obs.bold)
+shapiro.test(obs.mar)
+```
+```{r}
+hist(obs.nt, main="Observed richness", xlab="", breaks=10)
+hist(obs.mar, main="Observed richness", xlab="", breaks=10)
+hist(obs.bold, main="Observed richness", xlab="", breaks=10)
+```
+
+```{r,eval=FALSE}
+#with phyloseq
+rich.nt <- estimate_richness(ps.nt.fsh,measures=c("Shannon","Observed"))
+rich.bold <- estimate_richness(ps.bold.fsh,measures=c("Shannon","Observed"))
+rich.mar <- estimate_richness(ps.mar,measures=c("Shannon","Observed"))
+
+shapiro.test(rich.nt$Observed)
+shapiro.test(rich.bold$Observed)
+shapiro.test(rich.mar$Observed)
+#Untransformed data passes the Shapiro test (p>0.05) for the nt and mar databases (barely for MAR) for Observed richness. We can also see this in the histogram:   
+hist(rich.nt$Observed, main="Observed richness", xlab="", breaks=10)
+hist(rich.bold$Observed, main="Observed richness", xlab="", breaks=10)
+hist(rich.mar$Observed, main="Observed richness", xlab="", breaks=10)
+
+shapiro.test(rich.nt$Shannon)
+shapiro.test(rich.bold$Shannon)
+shapiro.test(rich.mar$Shannon)
+#For Shannon diversity, nt database is again ok but the other two are not.  
+hist(rich.nt$Shannon, main="Shannon richness", xlab="", breaks=10)
+hist(rich.bold$Shannon, main="Shannon richness", xlab="", breaks=10)
+hist(rich.mar$Shannon, main="Shannon richness", xlab="", breaks=10)
+```
+
+## Presence/absence      
+Shannon diversity index  
+```{r}
+rich.nt <- diversity(tab.nt.pa,index="shannon")
+rich.mar <- diversity(tab.mar.pa,index="shannon")
+rich.bold <- diversity(tab.bold.pa,index="shannon")
+```
+None of the presence/absence datasets pass the test for normality   
+```{r}
+shapiro.test(rich.nt)
+shapiro.test(rich.mar)
+shapiro.test(rich.bold)
+```
+
+```{r}
+hist(rich.nt, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.mar, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.bold, main="Shannon diversity", xlab="", breaks=10)
+```
+
+Observed richness  
+```{r}
+obs.nt <- specnumber(tab.nt)
+obs.bold <- specnumber(tab.bold)
+obs.mar <- specnumber(tab.mar)
+```
+Core nt and MAR datasets pass, BOLD fails   
+```{r}
+shapiro.test(obs.nt)
+shapiro.test(obs.bold)
+shapiro.test(obs.mar)
+```
+```{r}
+hist(obs.nt, main="Observed richness", xlab="", breaks=10)
+hist(obs.mar, main="Observed richness", xlab="", breaks=10)
+hist(obs.bold, main="Observed richness", xlab="", breaks=10)
+```
+
+## Relative abundance  
+Shannon diversity index  
+```{r}
+rich.nt <- diversity(tab.nt.rel,index="shannon")
+rich.mar <- diversity(tab.mar.rel,index="shannon")
+rich.bold <- diversity(tab.bold.rel,index="shannon")
+```
+The only one that passes is the nt dataset  
+```{r}
+shapiro.test(rich.nt)
+shapiro.test(rich.mar)
+shapiro.test(rich.bold)
+```
+
+```{r}
+hist(rich.nt, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.mar, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.bold, main="Shannon diversity", xlab="", breaks=10)
+```
+
+Observed richness  
+```{r}
+obs.nt <- specnumber(tab.nt)
+obs.bold <- specnumber(tab.bold)
+obs.mar <- specnumber(tab.mar)
+```
+core nt and mar datasets both pass   
+```{r}
+shapiro.test(obs.nt)
+shapiro.test(obs.bold)
+shapiro.test(obs.mar)
+```
+```{r}
+hist(obs.nt, main="Observed richness", xlab="", breaks=10)
+hist(obs.mar, main="Observed richness", xlab="", breaks=10)
+hist(obs.bold, main="Observed richness", xlab="", breaks=10)
+```
+
+## Log  
+Shannon diversity index  
+```{r}
+rich.nt <- diversity(tab.nt.log,index="shannon")
+rich.mar <- diversity(tab.mar.log,index="shannon")
+rich.bold <- diversity(tab.bold.log,index="shannon")
+```
+None pass    
+```{r}
+shapiro.test(rich.nt)
+shapiro.test(rich.mar)
+shapiro.test(rich.bold)
+```
+
+```{r}
+hist(rich.nt, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.mar, main="Shannon diversity", xlab="", breaks=10)
+hist(rich.bold, main="Shannon diversity", xlab="", breaks=10)
+```
+
+Observed richness  
+```{r}
+obs.nt <- specnumber(tab.nt)
+obs.bold <- specnumber(tab.bold)
+obs.mar <- specnumber(tab.mar)
+```
+core nt and mar datasets pass    
+```{r}
+shapiro.test(obs.nt)
+shapiro.test(obs.bold)
+shapiro.test(obs.mar)
+```
+```{r}
+hist(obs.nt, main="Observed richness", xlab="", breaks=10)
+hist(obs.mar, main="Observed richness", xlab="", breaks=10)
+hist(obs.bold, main="Observed richness", xlab="", breaks=10)
+```
+
+# Comparisons  
+
+## Percentage of class level assignments  
+```{r}
+bold.fsh.plot <- ps.bold.rel.melt %>% ungroup() %>% 
+  filter(.,Abundance>0) %>%  group_by(.,Class) %>% 
+  reframe(.,Class=unique(Class), 
+            db="BOLDv5",
+            Abund=sum(Abundance)) %>% 
+  mutate(RelAbund=Abund/sum(Abund)) %>%
+  ggplot(aes(x=db,y=RelAbund,fill=Class)) + 
+  geom_bar(stat="identity",position="stack") + theme(axis.title.x=element_blank(),legend.text = element_text(size=8))
+
+nt.fsh.plot <- ps.nt.rel.melt %>% ungroup() %>% 
+  filter(.,Abundance>0) %>%  group_by(.,Class) %>% 
+  reframe(.,Class=unique(Class), 
+            db="core nt",
+            Abund=sum(Abundance)) %>% 
+  mutate(RelAbund=Abund/sum(Abund)) %>%
+  ggplot(aes(x=db,y=RelAbund,fill=Class)) + 
+  geom_bar(stat="identity",position="stack")+ theme(axis.title.x=element_blank(),axis.title.y=element_blank(),legend.position="none") 
+
+mar.fsh.plot <- ps.mar.rel.melt %>% ungroup() %>% 
+  filter(.,Abundance>0) %>%  group_by(.,Class) %>% 
+  reframe(.,Class=unique(Class), 
+            db="MAR fish nt alias",
+            Abund=sum(Abundance)) %>% 
+  mutate(RelAbund=Abund/sum(Abund)) %>%
+  ggplot(aes(x=db,y=RelAbund,fill=Class)) + 
+  geom_bar(stat="identity",position="stack") + theme(axis.title.x=element_blank(),axis.title.y=element_blank(),legend.text = element_text(size=8))
+
+patchwork::wrap_plots(bold.fsh.plot,nt.fsh.plot,mar.fsh.plot,guides="collect") 
+#ggsave("Images/taxassgn.comp.fsh.png",width=9,height=5)
+```
+
+## Species of importance   
+```{r}
+#str_detect(names(ps.mar.pa.melt),"Comm")
+
+ps.mar.pa.melt %>% filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  #select(contains("Commer") | contains("Small.scale")) %>%
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% 
+  ggplot(aes(x=Month,fill=New,y=Rel)) + geom_bar(stat="identity",position="stack") + facet_grid(Site ~ Rookery) + guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) + theme_bw() + labs(y="Relative Abundance")
+```
+
+That is a lot of commercially relevant species. Does that track?  
+```{r}
+#ps.mar.pa.melt %>% filter(Abundance > 0) %>% select(c(Species,Reported.Commercial.FishbaseSpeciesPage)) %>% distinct() 
+
+ps.mar.pa.melt %>% filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  select(c(Species,contains("Commer") | contains("Small.scale") )) %>%
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% 
+  rowwise() %>% 
+  mutate(Relevant.Species= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% filter(!is.na(Species)) %>% distinct() # %>% write.csv(., file="/Users/lauragivens/Downloads/fishbase.commercialspecies.csv")
+```
+
+```{r}
+ps.mar.pa.melt %>% filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% 
+  ggplot(aes(x=Month,fill=New,y=Rel)) + geom_bar(stat="identity",position="stack") + facet_grid(Site ~ Rookery) + guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) + theme_bw() + labs(y="Relative Abundance")
+```
+
+table of commercially important and small scale fisheries species  
+```{r}
+comm.smsc.fisheries.tab <- ps.mar.pa.melt %>% filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  #select(contains("Commer") | contains("Small.scale")) %>%
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% filter(New=="TRUE" & Abundance > 0) %>%  select(c(Site,Rookery,Genus,Species)) %>% #select(c(Month,Site,Rookery,Side,Domain,Phylum,Class,Order,Family,Genus,Species)) %>% 
+  distinct() %>% mutate(n=1) %>% pivot_wider(names_from=c(Site,Rookery),values_from=n) %>%
+  select(c(Species,starts_with("Drown"),starts_with("Hicks"),starts_with("Turnef"))) %>%
+  filter(!is.na(Species)) %>%
+  arrange(Species) #%>%
+  #select(c(Genus,Species,starts_with("Drown"),starts_with("Hicks"),starts_with("Turnef"))) %>%
+  #arrange(Genus) %>% 
+  #View()
+
+write.csv(comm.smsc.fisheries.tab,file="/Users/lauragivens/Downloads/commercial.smallscale.bysite.csv")
+```
+
+## Species number by sampling effort  
+```{r}
+ps.mar.pa.melt %>% 
+  group_by(Month,Rookery,Site,Species) %>%
+  summarize(Abund=sum(Abundance),spec=unique(Species)) %>% 
+  filter(Abund>0) %>% ungroup() %>% 
+  group_by(Month,Rookery,Site) %>% 
+  summarize(n=length(Species)) %>% pivot_wider(names_from="Month",values_from="n") %>% arrange(desc(Site)) %>% flextable::flextable()
+```
+
+## Leeward v windward  
+```{r}
+ps.mar.pa.melt %>% filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>%
+  rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% 
+  ggplot(aes(x=Side,fill=New,y=Rel)) + 
+  geom_bar(stat="identity",position="stack") + 
+  facet_grid(Site ~ Rookery) + 
+  guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) + theme_bw() + labs(y="Relative Abundance")
+```
+
+```{r}
+plot_ordination(ps.mar.pa,ordinate(ps.mar.pa,method="NMDS"),color="Side") + facet_grid(Site~Rookery) + theme_bw()
+#ggsave("/Users/lauragivens/Downloads/leeward.windward.nmds.png",width=7,height=5)
+```
+
+# Richness  
+```{r}
+richdf <- rowSums(tab.mar.pa) %>% 
+  as.data.frame() %>% 
+  `colnames<-` ("samplerichness") %>% 
+  mutate(Sample=rownames(.)) %>% left_join(select((samplelist %>% mutate(Sample=rownames(.))),Sample,Month,Site,Rookery))
+```
+```{r}
+wrap_plots(
+ggplot(richdf) + geom_boxplot(aes(x=Month,y=samplerichness)) + labs(x="Month",y="Sample Richness"),
+ggplot(richdf) + geom_boxplot(aes(x=Site,y=samplerichness)) + labs(x="Site",y="Sample Richness"),
+ggplot(richdf) + geom_boxplot(aes(x=Rookery,y=samplerichness)) + labs(x="Rookery",y="Sample Richness")
+)
+
+
+wrap_plots(
+ggplot(richdf) + geom_boxplot(aes(x=Site,y=samplerichness)) + labs(x="Site",y="Number of taxa"),
+ggplot(richdf) + geom_boxplot(aes(x=Rookery,y=samplerichness)) + labs(x="Rookery",y="Number of taxa")
+) & theme_bw() & theme(axis.title.x=element_blank())
+
+#ggsave("Images/richness.boxplots.png",width=10,height=5,bg="white")
+```
+
+```{r}
+ps.mar.pa.melt %>% 
+  group_by(Rookery,Site,Species) %>%
+  summarize(Abund=sum(Abundance),spec=unique(Species)) %>% 
+  filter(Abund>0) %>% ungroup() %>% 
+  group_by(Rookery,Site) %>% 
+  summarize(n=length(Species)) %>% pivot_wider(names_from="Rookery",values_from="n")
+```
+
+```{r}
+ps.mar.pa.melt %>% 
+  group_by(Rookery,Site,Species) %>%
+  summarize(Abund=sum(Abundance),spec=unique(Species)) %>% 
+  filter(Abund>0) %>% ungroup() %>% 
+  group_by(Rookery,Site) %>% 
+  summarize(n=length(Species)) %>% pivot_wider(names_from="Rookery",values_from="n") %>% flextable::flextable()
+```
+```{r}
+ps.mar.pa.melt %>% 
+  group_by(Month,Rookery,Site,Species) %>%
+  summarize(Abund=sum(Abundance),spec=unique(Species)) %>% 
+  filter(Abund>0) %>% ungroup() %>% 
+  group_by(Month,Rookery,Site) %>% 
+  summarize(n=length(Species)) %>% pivot_wider(names_from="Month",values_from="n") %>% arrange(desc(Site)) %>% flextable::flextable()
+```
+
+```{r}
+hc <- get_taxa_unique(ps.mar %>% subset_samples(Site=="Hicks Caye") %>% prune_taxa(taxa_sums(.)>0,.),'Species')
+dc <- get_taxa_unique(ps.mar %>% subset_samples(Site=="Drowned Caye") %>% prune_taxa(taxa_sums(.)>0,.),'Species')
+ta <- get_taxa_unique(ps.mar %>% subset_samples(Site=="Turneffe Atoll") %>% prune_taxa(taxa_sums(.)>0,.),'Species')
+
+hc[!hc%in%c(dc,ta)]
+dc[!dc%in%c(hc,ta)]
+ta[!ta%in%c(hc,dc)]
+```
+
+```{r}
+kruskal.test(richdf$samplerichness ~ richdf$Month)
+kruskal.test(richdf$samplerichness ~ richdf$Site)
+kruskal.test(richdf$samplerichness ~ richdf$Rookery)
+```
+
+# Jaccard distance  
+Jaccard distance is a presence/absence based distance matrix
+```{r}
+jacc.mar.dist <- distance(ps.mar.pa,method='jaccard')
+jacc.bold.dist <- distance(ps.bold.pa,method='jaccard')
+jacc.nt.dist <- distance(ps.nt.pa,method='jaccard')
+```
+
+### distance-based Redundancy analysis   
+We want to know how much variation in community composition can be explained by the environmental variables we measured.  
+To do that, we are going to use a distance-based redundancy analysis (db-RDA) to identify the significant variables. (Different from a regular RDA because it can use non-Euclidean dissimilarity indices - if you use a Euclidean index, you will get the same result as rda() ).   
+
+```{r}
+#using vegan 
+rda.jacc.mar <- dbrda(jacc.mar.dist ~ RookeryBinary+Site+Month+Side,samplelist)
+rda.jacc.bold <- dbrda(jacc.bold.dist ~ RookeryBinary+Site+Month+Side,as.data.frame(as.matrix(sample_data(ps.bold.pa))))
+rda.jacc.nt <- dbrda(jacc.nt.dist ~ RookeryBinary+Site+Month+Side,as.data.frame(as.matrix(sample_data(ps.nt.pa))))
+```
+
+Calculate significance  
+```{r}
+step.mar <- vegan::anova.cca(rda.jacc.mar,permutations=1000,by='terms') #anova.cca performs an ANOVA like permutation test for RDA to assess the significance of constraints  
+step.bold <- vegan::anova.cca(rda.jacc.bold,permutations=1000,by='terms')
+step.nt <- vegan::anova.cca(rda.jacc.nt,permutations=1000,by='terms')
+```
+
+```{r}
+step.mar
+```
+
+```{r}
+step.bold
+```
+
+```{r}
+step.nt
+```
+
+#### Visualize  
+```{r}
+#bar plot of relative eigenvalues. This is the percentage variance explained by each axis
+plot_scree(rda.jacc.mar)
+plot_scree(rda.jacc.bold)
+plot_scree(rda.jacc.nt)
+```
+
+```{r}
+jacc.mar.pa.plot <- plot_ordination(ps.mar.pa,rda.jacc.mar,color="Rookery",shape="Month") + facet_wrap(~Site) + labs(title="distance-based RDA plot",subtitle="Jaccard distance",caption="tax assigned using MAR alias database")
+jacc.mar.pa.plot
+#ggsave("Images/dbrda.jacc.mar.fsh.png",width=7,height=5)
+
+jacc.bold.pa.plot <- plot_ordination(ps.bold.pa,rda.jacc.bold,color="Rookery",shape="Side") + facet_wrap(~Site) + labs(title="distance-based RDA plot",subtitle="Jaccard distance",caption="tax assigned using BOLD v5 database")
+jacc.bold.pa.plot
+#ggsave("Images/dbrda.jacc.bold.fsh.png",width=7,height=5)
+
+jacc.nt.pa.plot <- plot_ordination(ps.nt.pa,rda.jacc.nt,color="Rookery",shape="Side") + facet_wrap(~Site) + labs(title="distance-based RDA plot",subtitle="Jaccard distance",caption="tax assigned using core nt database")
+jacc.nt.pa.plot
+#ggsave("Images/dbrda.jacc.nt.fsh.png",width=7,height=5)
+```
+```{r}
+patchwork::wrap_plots(jacc.mar.pa.plot,jacc.nt.pa.plot,jacc.bold.pa.plot,nrow=1,guides = "collect")
+#ggsave("Images/dbrda.jacc.allfsh.png",width=12,height=6)
+```
+
+```{r}
+arrow_map_rda = aes(xend = dbRDA1, 
+                yend = dbRDA2,
+                x = 0, y = 0, 
+                shape = NULL, color = NULL,label=labels
+                )
+label_map_rda = aes(x = 1.5 * dbRDA1, 
+                y = 1.5 * dbRDA2, 
+                shape = NULL, color = NULL,label=labels
+                )
+arrowhead = arrow(length = unit(0.03, "npc"))
+```
+```{r}
+# get scores from rda  
+sigscrs_rda_mar <- scores(rda.jacc.mar,display="bp") %>% as.data.frame() %>% filter(., abs(dbRDA1)>0.05 & abs(dbRDA2)>0.05)
+# add labels  
+arrowdf_rda_mar <- data.frame(labels = rownames(sigscrs_rda_mar), sigscrs_rda_mar)
+
+jacc.mar.pa.scrs.plot <- plot_ordination(ps.mar.pa,rda.jacc.mar,shape="Rookery") + 
+  geom_point(aes(color=Site)) + 
+  geom_segment(arrow_map_rda, data=arrowdf_rda_mar,arrow=arrowhead) + #add vector line  
+  #geom_text(label_map_rda, size = 4, data = arrowdf_rda_mar, color = "black")  #add label 
+    ggrepel::geom_text_repel(label_map_rda,data = arrowdf_rda_mar, 
+                           cex = 4, direction = "both", 
+                           segment.size = 0.25,color="black") + labs(title="distance-based RDA plot",subtitle="Jaccard distance",caption="tax assigned using MAR alias database")
+#ggsave("Images/dbrda.jacc.mar.scrs.fsh.png",width=7,height=7)
+```
+
+```{r}
+# get scores from rda  
+sigscrs_rda_bold <- scores(rda.jacc.bold,display="bp") %>% as.data.frame() %>% filter(., abs(dbRDA1)>0.05 & abs(dbRDA2)>0.05)
+# add labels  
+arrowdf_rda_bold <- data.frame(labels = rownames(sigscrs_rda_bold), sigscrs_rda_bold)
+
+jacc.bold.pa.scrs.plot <- plot_ordination(ps.bold.pa,rda.jacc.bold,shape="Rookery") + 
+  geom_point(aes(color=Site)) + 
+  geom_segment(arrow_map_rda, data=arrowdf_rda_bold,arrow=arrowhead) + #add vector line  
+  #geom_text(label_map_rda, size = 4, data = arrowdf_rda_bold, color = "black")  #add label 
+    ggrepel::geom_text_repel(label_map_rda,data = arrowdf_rda_bold, 
+                           cex = 4, direction = "both", 
+                           segment.size = 0.25,color="black") + labs(title="distance-based RDA plot",subtitle="Jaccard distance",caption="tax assigned using BOLD v5 database")
+#ggsave("Images/dbrda.jacc.bold.scrs.fsh.png",width=7,height=7)
+```
+
+```{r}
+# get scores from rda  
+sigscrs_rda_nt <- scores(rda.jacc.nt,display="bp") %>% as.data.frame() %>% filter(., abs(dbRDA1)>0.05 & abs(dbRDA2)>0.05)
+# add labels  
+arrowdf_rda_nt <- data.frame(labels = rownames(sigscrs_rda_nt), sigscrs_rda_nt)
+
+jacc.nt.pa.scrs.plot <- plot_ordination(ps.nt.pa,rda.jacc.nt) + 
+  geom_point(aes(color=Site)) + 
+  geom_segment(arrow_map_rda, data=arrowdf_rda_nt,arrow=arrowhead) + #add vector line  
+  #geom_text(label_map_rda, size = 4, data = arrowdf_rda_nt, color = "black")  #add label 
+    ggrepel::geom_text_repel(label_map_rda,data = arrowdf_rda_nt, 
+                           cex = 4, direction = "both", 
+                           segment.size = 0.25,color="black") + labs(title="distance-based RDA plot",subtitle="Jaccard distance",caption="tax assigned using core nt database")
+#ggsave("Images/dbrda.jacc.nt.scrs.fsh.png",width=7,height=5)
+```
+
+```{r}
+patchwork::wrap_plots(jacc.nt.pa.scrs.plot,jacc.mar.pa.scrs.plot,jacc.bold.pa.scrs.plot,nrow=1,guides="collect")
+#ggsave("Images/dbrda.jacc.allfsh.scrs.png",width=12,height=6,bg="white")
+```
+
+### PERMANOVA  
+Adonis checks if groups have different compositions. However, this can be impacted by within-group dispersion. If distance to centroids is unequal between groups, some tests are very sensitive to that and will identify them as significant.   
+
+#### test assumptions  
+MANOVA can be confounded by within-group differences
+```{r}
+mod.rook <- betadisper(jacc.mar.dist,samplelist$Rookery) #are the communities are homogenously dispersed
+
+anova(mod.rook)  #perform an anova on the dispersions; if the ANOVA's p-value is not significant it means that group dispersions are homogenous
+```
+So any differences identified between rookery/non-rookery samples should not be because the two groups have different dispersions, I think.   
+
+HOWEVER,  
+The sites themselves are statistically significant in their dispersions.  
+```{r}
+mod <- betadisper(jacc.mar.dist,samplelist$Site) #are the communities are homogenously dispersed
+
+anova(mod)  #perform an anova on the dispersions; if the ANOVA's p-value is not significant it means that group dispersions are homogenous
+
+TukeyHSD(mod)  #A Tukey's test can be done to see if and which groups differ in relation to their variances
+```
+
+#### test strata  
+Strata forces the permutations to occur within the samples inside each block  
+Because that variable is included in the block, it shouldn't go into the equation  
+```{r}
+perm.OR <-how(nperm=999)
+setBlocks(perm.OR) <- with(samplelist,Site)
+
+vegan::adonis2(jacc.mar.dist~RookeryBinary+Month+Side+Replicate+FilterNum,samplelist,by='terms',permutations=perm.OR)
+vegan::adonis2(jacc.mar.dist~RookeryBinary+Month+Side+Replicate+FilterNum,samplelist,by='terms',permutations=1000)
+```
+
+```{r}
+perm.mar <-how(nperm=999)
+setBlocks(perm.mar) <- with(samplelist,Site)
+
+perm.bold <-how(nperm=999)
+setBlocks(perm.bold) <- with(as.data.frame(as.matrix(sample_data(ps.bold.pa))),Site)
+
+perm.nt <-how(nperm=999)
+setBlocks(perm.nt) <- with(as.data.frame(as.matrix(sample_data(ps.nt.pa))),Site)
+```
+
+```{r}
+adonis.jacc.mar <- vegan::adonis2(jacc.mar.dist~RookeryBinary+Month+Side,samplelist,perm=perm.mar,by='terms')
+
+adonis.jacc.bold <- vegan::adonis2(jacc.bold.dist~RookeryBinary+Month+Side,as.data.frame(as.matrix(sample_data(ps.bold.pa))),perm=perm.bold,by='terms')
+
+adonis.jacc.nt <- vegan::adonis2(jacc.nt.dist~RookeryBinary+Month+Side,as.data.frame(as.matrix(sample_data(ps.nt.pa))),perm=perm.nt,by='terms')
+```
+
+```{r}
+pairwiseAdonis::pairwise.adonis2(jacc.mar.dist~RookeryBinary*Month+Side,samplelist,strata="Site")
+```
+
+
+```{r}
+adonis.jacc.mar
+adonis.jacc.bold
+adonis.jacc.nt
+```
+
+## Bray-Curtis dissimilarity  
+This takes abundance into account  
+```{r}
+bray.mar.dist <- distance(ps.mar.rel,method='bray')
+bray.bold.dist <- distance(ps.bold.rel,method='bray')
+bray.nt.dist <- distance(ps.nt.rel,method='bray')
+```
+
+#### test assumptions  
+MANOVA can be confounded by within-group differences
+```{r}
+mod.rook <- betadisper(bray.mar.dist,samplelist$Rookery) #are the communities are homogenously dispersed
+
+anova(mod.rook)  #perform an anova on the dispersions; if the ANOVA's p-value is not significant it means that group dispersions are homogenous
+```
+```{r}
+mod <- betadisper(bray.mar.dist,samplelist$Site)
+anova(mod)
+```
+Looks like dispersions for relative abundance dataset are fine!  
+
+### PCoA  
+PCoA is commonly used for (dis)similarities. It is more flexible than a PCA plot, because it will preserve the distances generated by the similarity measure. However, it can only represent the Euclidian distances of a matrix, even if the similarity index you use reports non-euclidean distances or a mix.  
+
+A good PCoA plot will generate only a few axes with large eigenvalues, capturing >50% of the variation  
+```{r}
+pcoa.bray.mar <- ordinate(ps.mar.rel,bray.mar.dist,method="PCoA")
+pcoa.bray.bold <- ordinate(ps.bold.rel,bray.bold.dist,method="PCoA")
+pcoa.bray.nt <- ordinate(ps.nt.rel,bray.nt.dist,method="PCoA")
+```
+
+```{r}
+plot_scree(pcoa.bray.mar)
+plot_scree(pcoa.bray.bold)
+plot_scree(pcoa.bray.nt)
+```
+
+```{r}
+plot_ordination(ps.mar.rel,pcoa.bray.mar,type="samples") + geom_point(aes(color=Rookery))
+plot_ordination(ps.bold.rel,pcoa.bray.bold,type="samples") + geom_point(aes(color=Rookery))
+plot_ordination(ps.nt.rel,pcoa.bray.nt,type="samples") + geom_point(aes(color=Rookery))
+```
+
+# GLM 
+Want to know if any specific fish species has a response to rookery presence  
+Want to know if there is a difference between trophic composition  
+poisson distribution because we essentially have count data where the response variable = number of events occurring in a specific timeframe  
+https://medium.com/@sahin.samia/a-comprehensive-introduction-to-generalized-linear-models-fd773d460c1d
+
+Trophic index ~ Rookery + Month + Side + Site 
+```{r}
+lm1 <- glm(Abundance ~ Trophic.Round:Month + Rookery + Month + Site, data=ps.mar.rel.melt)
+summary(lm1)
+```
+
+Does trophic diversity differ between site types?  
+```{r}
+lm2 <- lmer(Abundance ~ Trophic.Round:Rookery:Month + (1|Site) , data = ps.mar.pa.melt)
+summary(lm2)
+```
+
+# Heatmap  
+```{r}
+mean_cutoff = 0.01
+mean_test = function(x) {
+  mean(x) >= mean_cutoff
+}
+
+melt.mar.rel <- ps.mar.rel %>% tax_glom(.,"Genus",NArm=FALSE) %>% filter_taxa(mean_test, prune=TRUE) %>% psmelt()
+
+melt.mar.rel %>% group_by(Month,Site,Rookery,Family,Genus) %>% summarize(Abund=sum(Abundance)) %>%  ggplot(aes(x=Rookery,y=Genus,fill=Abund)) + geom_tile(,group="Family") + facet_wrap(~Site,scales="free") + theme(axis.text.x = element_text(angle=90))
+```
+```{r}
+melt.mar.rel
+```
+
+
+```{r}
+gen.melt.mar.rel <- melt.mar.rel %>% ungroup() %>% mutate(Names=word(NewName,sep="R")) %>% group_by(Genus,Names,Rookery,Site) %>% summarize(Abund=sum(Abundance)) %>% ungroup() %>% group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>% mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund)) %>% group_by(Site) %>% arrange(.,Rookery,.by_group=TRUE) %>% ungroup() %>% select(-c(Rookery,Site))
+
+gen.rel.tab <- gen.melt.mar.rel %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Names,values_from=RelAbund) %>% as.data.frame()
+rownames(gen.rel.tab) <- gen.rel.tab$Genus
+gen.rel.tab$Genus <- NULL
+gen.rel.dt <- melt.mar.rel %>% ungroup() %>% mutate(Names=word(NewName,sep="R")) %>% group_by(.,Names) %>% summarize(Month=unique(Month),Site=unique(Site),Rookery=unique(Rookery))
+
+
+ 
+ 
+ 
+
+annotation_col = gen.rel.dt %>% group_by(Rookery,Site) %>% 
+  arrange("Rookery",.by_group=TRUE) %>% ungroup() %>% 
+  select(c(Names,Rookery,Site)) %>% 
+  mutate(Rookery=factor(Rookery,ordered=TRUE),
+         Site=factor(Site,ordered=TRUE)) %>% 
+  data.frame(.,row.names = "Names")
+```
+
+```{r}
+pheatmap::pheatmap(gen.rel.tab,cluster_cols=FALSE,annotation_col=annotation_col,gaps_col=c(8,16))
+```
+
+
+# Indicator species   
+```{r}
+#https://cran.r-project.org/web/packages/indicspecies/vignettes/IndicatorSpeciesAnalysis.html#data-required-for-indicator-species-analysis  
+library(indicspecies) #needs a matrix or data frame with sites as rows and species in columns  
+```
+```{r}
+perm.indic <-how(nperm=999)
+setBlocks(perm.indic) <- with(gen.rel.dt,Site)
+```
+
+MAR fish species over 1% of db, relative abundance  
+```{r}
+indic.1pct.melt <- ps.mar.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
+  filter_taxa(mean_test, prune=TRUE) %>% 
+  psmelt() %>% 
+  mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
+  group_by(Genus,Names,Rookery,Site) %>% 
+  summarize(Abund=sum(Abundance)) %>% ungroup() %>% 
+  group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>%
+  mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund))
+
+indic.1pct.tab <- indic.1pct.melt %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Genus,values_from=RelAbund) %>% as.data.frame() 
+rownames(indic.1pct.tab) <- indic.1pct.tab$Names
+indic.1pct.tab$Names <- NULL
+```
+
+```{r}
+indval.1pct <- multipatt(indic.1pct.tab, gen.rel.dt$Rookery, 
+                    control = perm.indic) 
+summary(indval.1pct)
+```
+
+MAR fish species, relative abundance  
+```{r}
+indic.melt <- ps.mar.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
+  psmelt() %>% 
+  mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
+  group_by(Genus,Names,Rookery,Site) %>% 
+  summarize(Abund=sum(Abundance)) %>% ungroup() %>% 
+  group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>%
+  mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund))
+
+indic.tab <- indic.melt %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Genus,values_from=RelAbund) %>% as.data.frame() 
+rownames(indic.tab) <- indic.tab$Names
+indic.tab$Names <- NULL
+```
+
+```{r}
+indval <- multipatt(indic.tab, gen.rel.dt$Rookery, 
+                    control = perm.indic) 
+summary(indval)
+```
+
+BOLD, relative abundance  
+```{r}
+indic.bold.melt <- ps.bold.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
+  psmelt() %>% 
+  mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
+  group_by(Genus,Names,Rookery,Site) %>% 
+  summarize(Abund=sum(Abundance)) %>% ungroup() %>% 
+  group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>%
+  mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund))
+
+indic.bold.tab <- indic.bold.melt %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Genus,values_from=RelAbund) %>% as.data.frame() 
+rownames(indic.bold.tab) <- indic.bold.tab$Names
+indic.bold.tab$Names <- NULL
+```
+
+```{r}
+indval.bold <- multipatt(indic.bold.tab, gen.rel.dt$Rookery, 
+                    control = perm.indic) 
+summary(indval.bold)
+```
+
+core nt fish species, relative abundance  
+```{r}
+indic.nt.melt <- ps.nt.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
+  psmelt() %>% 
+  mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
+  group_by(Genus,Names,Rookery,Site) %>% 
+  summarize(Abund=sum(Abundance)) %>% ungroup() %>% 
+  group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>%
+  mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund))
+
+indic.nt.tab <- indic.nt.melt %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Genus,values_from=RelAbund) %>% as.data.frame() 
+rownames(indic.nt.tab) <- indic.nt.tab$Names
+indic.nt.tab$Names <- NULL
+```
+
+```{r}
+indval.nt <- multipatt(indic.nt.tab, gen.rel.dt$Rookery, 
+                    control = perm.indic) 
+summary(indval.nt)
+```
+
+# Trophic Level  
+Violin plot
+```{r,warning=FALSE}
+ps.nt.rel.melt %>% 
+  mutate(Trophic.Rounded = as.numeric(Trophic.Rounded),
+         Month=factor(Month,levels=c("August","November","February","May"))) %>% 
+  filter(Abundance>0) %>%
+ggplot(.,
+       aes(x=Month,
+           y=Trophic.Rounded,
+           fill=Site)) + 
+  facet_wrap(~Site,nrow=3) + 
+  geom_violin() + 
+  #geom_jitter(shape=16, position=position_jitter(0.2)) + 
+  geom_boxplot(width=0.15) +
+ scale_color_viridis_d(begin=0.3,end=0.9,option='plasma') + scale_fill_viridis_d(begin=0.3,end=0.9,option='plasma') +
+  labs(title="Species' trophic index at rookery and non-rookery mangrove cayes",
+       caption="taxa assigned using MAR fish species BLAST alias",
+       y="Trophic Index")
+#ggsave("Images/violin.relabund.trophic.mar.png",width=10,height=7)
+```
+```{r,warning=FALSE}
+ps.mar.rel.melt %>% 
+  mutate(Trophic.Base = as.numeric(Trophic.Base),
+         Month=factor(Month,levels=c("August","November","February","May"))) %>% 
+  filter(Abundance>0) %>%
+ggplot(.,
+       aes(x=Month,
+           y=Trophic.Base,
+           fill=Site)) + 
+  facet_wrap(~Site,nrow=3) + 
+  geom_violin() + 
+  #geom_jitter(shape=16, position=position_jitter(0.2)) + 
+  geom_boxplot(width=0.15) +
+ scale_color_viridis_d(begin=0.3,end=0.9,option='plasma') + scale_fill_viridis_d(begin=0.3,end=0.9,option='plasma') +
+  labs(title="Species' trophic index at rookery and non-rookery mangrove cayes",
+       caption="taxa assigned using MAR fish species BLAST alias",
+       y="Trophic Index")
+#ggsave("Images/violin.relabund.trophic.mar.png",width=10,height=7)
+```
+
+```{r,warning=FALSE}
+ps.mar.rel.melt %>% 
+  mutate(Trophic.Base = as.numeric(Trophic.Base),
+         Month=factor(Month,levels=c("August","November","February","May"))) %>% 
+  filter(Abundance>0) %>%
+ggplot(.,
+       aes(x=Month,
+           y=Trophic.Base,
+           fill=Rookery)) + 
+  facet_wrap(Rookery~Site,nrow=2) + 
+  geom_violin() + 
+  #geom_jitter(shape=16, position=position_jitter(0.2)) + 
+  geom_boxplot(width=0.15) +
+ scale_color_viridis_d(begin=0.3,end=0.9,option='plasma') + scale_fill_viridis_d(begin=0.3,end=0.9,option='plasma') +
+  labs(title="Species' trophic index at rookery and non-rookery mangrove cayes",
+       caption="taxa assigned using MAR fish species BLAST alias",
+       y="Trophic Index")
+#ggsave("Images/violin.relabund.trophic.mar.png",width=10,height=7)
+```
+
+```{r,warning=FALSE}
+ps.nt.rel.melt %>%
+  mutate(Trophic.Level = as.numeric(Trophic.Level),
+         Month=factor(Month,levels=c("August","November","February","May"))) %>% 
+  filter(Abundance>0) %>%
+ggplot(.,
+       aes(x=Month,
+           y=Trophic.Level,
+           fill=Rookery)) + 
+  facet_wrap(Rookery~Site,nrow=2) + 
+  geom_violin() + 
+  #geom_jitter(shape=16, position=position_jitter(0.2)) + 
+  geom_boxplot(width=0.15) +
+ scale_color_viridis_d(begin=0.3,end=0.9,option='plasma') + scale_fill_viridis_d(begin=0.3,end=0.9,option='plasma') +
+  labs(title="Species' trophic index at rookery and non-rookery mangrove cayes",
+       caption="taxa assigned using nt BLAST database",
+       y="Trophic Index")
+#ggsave("Images/violin.relabund.trophic.nt.fsh.png",width=10,height=7)
+```
+
+(need to figure out how to add index to BOLD assigned taxa)  
+
+```{r}
+lmdata.mar <- ps.mar.rel.melt
+lmdata.mar$Trophic.Round <- as.factor(lmdata.mar$Trophic.Round)
+lmdata.mar$Site <- as.factor(lmdata.mar$Site)
+```
+
+```{r}
+lm3 <- glm(Abundance ~ Trophic.Round:Month:Site + Trophic.Round:Rookery + Rookery, data=ps.mar.rel.melt)
+summary(lm3)
+```
+
+```{r}
+lme1 <- lmer(Abundance ~ Trophic.Round:Rookery + (1|Site) + (1|Month), data = ps.mar.pa.melt, REML=FALSE)
+summary(lme1)
+```
+plot random effects  
+(random effects with a variance of 0 have covariance)
+```{r}
+dotplot(ranef(lme1))
+```
+
+```{r}
+lme0 <- lmer(Abundance ~ Trophic.Round  + (1|Site) + (1|Month), data = ps.mar.pa.melt, REML=FALSE)
+summary(lme0)
+```
+
+Test 
+```{r}
+anova(lme1,lme0)
+```
+
+Test effect on residuals  
+```{r}
+kruskal.test(residuals(lme1) ~ ps.mar.pa.melt$Sample)
+```
+
+```{r}
+ggeffects::ggpredict(lme1, terms = c("Trophic.Round","Rookery"),type="fixed") %>% plot()
+```
+
+
+Pie chart?  
+```{r}
+ps.mar.pa.melt %>%  
+  group_by(Trophic.Round) %>% 
+  #group_by(Site,Rookery,Trophic.Round) %>% #filter(!is.na(Trophic.Round)) %>%
+  summarize(Tlevel=unique(Trophic.Round),Abundance=sum(Abundance)) %>% 
+  mutate(Rel=Abundance/sum(Abundance)) %>% 
+  mutate(csum = rev(cumsum(rev(Rel))), 
+         pos = Rel/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), Rel/2, pos)) %>% 
+  ggplot(aes(x="",y=Rel,fill=Tlevel)) + 
+  #ggplot(aes(x=Rookery,y=Rel,fill=Tlevel)) + 
+  geom_bar(stat = "identity",position="stack",color="black") + 
+  #facet_wrap(~Site) + 
+  #facet_wrap(~Rookery) +
+  labs(y="Relative abundance",title="Trophic index of species identified at rookery and non-rookery sites",caption="taxa annotated using core nt database") +
+  coord_polar(theta="y",start=0) + theme_void() 
+```
+
+```{r}
+ps.nt.pa.melt %>%  
+  group_by(Trophic.Rounded) %>% 
+  #group_by(Site,Rookery,Trophic.Rounded) %>% #filter(!is.na(Trophic.Rounded)) %>%
+  summarize(Tlevel=unique(Trophic.Rounded),Abundance=sum(Abundance)) %>% 
+  mutate(Rel=Abundance/sum(Abundance)) %>% 
+  mutate(csum = rev(cumsum(rev(Rel))), 
+         pos = Rel/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), Rel/2, pos)) %>% 
+  ggplot(aes(x="",y=Rel,fill=Tlevel)) + 
+  #ggplot(aes(x=Rookery,y=Rel,fill=Tlevel)) + 
+  geom_bar(stat = "identity",position="stack",color="black") + 
+  #facet_wrap(~Site) + 
+  #facet_wrap(~Rookery) +
+  labs(y="Relative abundance",title="Trophic index category of species identified at rookery and non-rookery sites",caption="taxa annotated using core nt database") +
+  coord_polar(theta="y",start=0) + theme_void() 
+```
+
+# IUCN  
+```{r}
+#ps.mar.rel.melt %>% 
+ps.mar.pa %>% psmelt() %>%
+  group_by(Site,Rookery,IUCN.Category) %>%
+  summarize(IUCN=unique(IUCN.Category),Abundance=sum(Abundance)) %>% 
+  mutate(Rel=Abundance/sum(Abundance)) %>% ggplot(aes(x=Rookery,y=Rel,fill=IUCN)) + geom_bar(stat = "identity",position="stack") + facet_wrap(~Site) + labs(y="Relative abundance",title="IUCN category of species identified at rookery and non-rookery sites",caption="taxa annotated using MAR nt alias database")
+#ggsave("Images/iucn.mar.png")
+```
+
+```{r}
+ps.mar.pa.melt$IUCN.Category[ps.mar.pa.melt$IUCN.Category==""] <- NA 
+ps.mar.pa.melt %>% 
+  group_by(IUCN.Category) %>% 
+  #group_by(Rookery,IUCN.Category) %>% 
+  #group_by(Site,Rookery,IUCN.Category) %>% #filter(!is.na(IUCN.Category)) %>%
+  summarize(IUCN=unique(IUCN.Category),Abundance=sum(Abundance)) %>% 
+  mutate(Rel=Abundance/sum(Abundance)) %>% 
+  mutate(csum = rev(cumsum(rev(Rel))), 
+         pos = Rel/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), Rel/2, pos)) %>% 
+  ggplot(aes(x="",y=Rel,fill=IUCN)) + 
+  #ggplot(aes(x=Rookery,y=Rel,fill=IUCN)) + 
+  geom_bar(stat = "identity",position="stack",color="black") + 
+  #facet_wrap(~Site) + 
+  #facet_wrap(~Rookery) +
+  labs(y="Relative abundance",title="IUCN category of species identified at rookery and non-rookery sites",caption="taxa annotated using MAR species BLAST alias database") +
+  coord_polar(theta="y",start=0) + theme_void()  
+```
+
+And why are we using the presence/absence database?  
+Because using the relative abundance one massively skews the data because of one sample from Hicks Caye that has a huge representation from shark   
+```{r}
+ps.mar.rel.melt %>%
+  mutate(Month=factor(Month,levels=c("August","November","February","May")))  %>% filter(IUCN.Category=="Endangered") %>% ggplot(aes(x=SampleName_Short,y=Abundance,fill=Family)) + geom_bar(stat="identity",position="stack") + facet_grid(Month~Site,scales="free_x") + theme(axis.text.x = element_text(angle=90))
+```
+
+```{r}
+ps.mar.rel.melt %>%
+    mutate(Month=factor(Month,levels=c("August","November","February","May")))  %>% filter(IUCN.Category=="Endangered" & Site=="Hicks Caye" & Month=="August" & Abundance>0) 
+```
+
+```{r}
+ ps.nt.pa.melt %>%  
+# ps.nt.rel.melt %>% 
+  group_by(Site,Rookery,IUCN.Category) %>% #filter(!is.na(IUCN.Category)) %>%
+  summarize(IUCN=unique(IUCN.Category),Abundance=sum(Abundance)) %>% 
+  mutate(Rel=Abundance/sum(Abundance)) %>% ggplot(aes(x=Rookery,y=Rel,fill=IUCN)) + 
+  geom_bar(stat = "identity",position="stack") + 
+  facet_wrap(~Site) + 
+  labs(y="Relative abundance",title="IUCN category of species identified at rookery and non-rookery sites",caption="taxa annotated using core nt database")
+#ggsave("Images/iucn.nt.fsh.png")
+```
+```{r}
+ ps.nt.pa.melt %>% 
+  group_by(IUCN.Category) %>% 
+  #group_by(Rookery,IUCN.Category) %>% 
+  #group_by(Site,Rookery,IUCN.Category) %>% #filter(!is.na(IUCN.Category)) %>%
+  summarize(IUCN=unique(IUCN.Category),Abundance=sum(Abundance)) %>% 
+  mutate(Rel=Abundance/sum(Abundance)) %>% 
+  mutate(csum = rev(cumsum(rev(Rel))), 
+         pos = Rel/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), Rel/2, pos)) %>% 
+  ggplot(aes(x="",y=Rel,fill=IUCN)) + 
+  #ggplot(aes(x=Rookery,y=Rel,fill=IUCN)) + 
+  geom_bar(stat = "identity",position="stack",color="black") + 
+  #facet_wrap(~Site) + 
+  #facet_wrap(~Rookery) +
+  labs(y="Relative abundance",title="IUCN category of species identified at rookery and non-rookery sites",caption="taxa annotated using core nt database") +
+  coord_polar(theta="y",start=0) + theme_void() + 
+  geom_label_repel(aes(y = pos, label = IUCN.Category),
+                   size = 3, nudge_x = 1, show.legend = FALSE,direction="both") 
+```
+
+# Session Info   
+```{r}
+save.image("RData/08_Analysis_Fish.RData")
+```
+
+```{r}
+sessionInfo()
+```
