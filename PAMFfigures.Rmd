@@ -48,15 +48,12 @@ ps.nt.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.rds"))
 ps.mar.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.troph.rds"))
 ps.bold.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.bold.rds"))
 
-
 #taxa_nt <- readRDS(paste0(dir_results,"/prune.decontam.ps.nt.troph.rds"))
 #taxa_mar <- readRDS(paste0(dir_results,"/taxtable.wtroph.rds"))
 #taxa_bold <- readRDS(paste0(dir_results,"/taxtable.bold.rds"))
 
 meta <- readRDS(paste0(dir_results,"/metadata.edit.rds"))
 samplelist <- meta %>% filter(Rookery!="Practice" & Rookery !="Blank")
-
-
 
 ps.nt.c <- ps.nt.all %>% subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
   subset_taxa(Phylum=="Chordata") 
@@ -698,7 +695,7 @@ nassigned.mar.plot <- nassigned.mar.df %>%
   labs(x="Number of assigned taxa", title="Number of fish taxa assigned to each rank using a masked GenBank database") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=(ifelse(value>0 & value<275,value,NA))),hjust=2.5) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,300)) + theme(legend.position="right")
+  scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + theme(legend.position="right")
 
 nassigned.mar.plot
 ```
@@ -723,7 +720,7 @@ nassigned.bold.plot <- nassigned.bold.df %>%
   labs(x="Number of assigned taxa", title="Number of fish taxa assigned to each rank using BOLD v5") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=1) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,300)) + theme(legend.position="none")
+  scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + theme(legend.position="none")
 
 nassigned.bold.plot
 ```
@@ -762,7 +759,7 @@ nassigned.phy.nt.plot <- nassigned.nt.df %>%
   labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using GenBank") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=0) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,1400)) + 
+  scale_x_continuous(expand = c(0,NA),limits=c(0,150)) + 
   theme(legend.position="none")
 nassigned.phy.nt.plot
 ```
@@ -789,7 +786,7 @@ nassigned.phy.bold.plot <- nassigned.boldall.df %>%
   labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using BOLD v5") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=1) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,300)) 
+  scale_x_continuous(expand = c(0,NA),limits=c(0,200)) 
 
 nassigned.phy.bold.plot
 ```
@@ -814,7 +811,7 @@ nassigned.phy.mar.plot <- nassigned.marall.df %>%
   labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using a masked GenBank database") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=1) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,300)) + 
+  scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + 
   theme(legend.position="right")
 
 nassigned.phy.mar.plot
@@ -831,7 +828,7 @@ patchwork::wrap_plots(
                         BBB##
                         CCC##
                         ")
-ggsave("/Users/lauragivens/Downloads/taxcoverage.phy.png",width=12,height=8)
+#ggsave("/Users/lauragivens/Downloads/taxcoverage.phy.png",width=12,height=8)
 ```
 
 # Trophic Level  
@@ -930,7 +927,7 @@ patchwork::wrap_plots(
   (violin.nt.plot+theme(axis.title.x = element_blank(),legend.position="none")),
   violin.mar.plot,
   nrow=2)
-ggsave("/Users/lauragivens/Downloads/violin.nt.comp.png",width=12,height=8)
+#ggsave("/Users/lauragivens/Downloads/violin.nt.comp.png",width=12,height=8)
 ```
 
 # Check accuracy  
@@ -1204,6 +1201,7 @@ accuracy.plot.df <- accuracy.nt %>% select(-c(1:17)) %>% distinct() %>% #get a u
          ) %>% ungroup() %>% group_by(Rank)  %>% arrange(desc(FalseAssgn),.by_group = TRUE) %>% arrange(desc(isassgn),.by_group = TRUE) %>% mutate(,
          LabelNum=( cumsum(FinalNum)))
 
+accuracy.plot.df
 ```
 ```{r}
 plotpatt <- c("stripe","crosshatch","circle",NA)
@@ -1252,7 +1250,7 @@ bar.patt.theme <- bar.patt.man +
          ) + 
   labs(x="Number of fish taxa", 
        title="Number of chordate taxa assigned to each rank \n using the NCBI GenBank core nt database") + 
-  scale_x_continuous(expand = c(0,NA),limits=c(-10,750)) + 
+  scale_x_continuous(expand = c(0,NA),limits=c(-10,125)) + 
   theme(legend.position="right",
         legend.spacing = unit(1,"cm"),
         legend.box.margin = margin(c(1,0,1,1),unit="cm"),
@@ -1268,7 +1266,7 @@ bar.patt.label <- bar.patt.theme +
                    #label.padding = unit(0.15,"line"),
                    nudge_x=(-5),
                    min.segment.length = 0.2,
-                   xlim=c(-10,800),
+                   xlim=c(-10,150),
                    size=5,label.size=1,
                    show.legend=FALSE
                    ) 
@@ -1425,6 +1423,7 @@ AAAAA
 BBBB#
 CCC##
 "
+
 patchwork::wrap_plots(bar.patt.label, nassigned.mar.plot2, bar.bd.patt.label,nrow=3,guides="collect") + 
   plot_layout(design=design2) + plot_annotation(caption='A) Likelihood that a species could be found in the MAR was determined through a search of known countries in FishBase on 11 June 2025 \n B) Species assignments were restricted by taxid of known species',tag_levels='A',tag_sep = ".") & theme(text=element_text(size=20))
 
