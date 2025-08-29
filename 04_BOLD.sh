@@ -7,7 +7,7 @@ conda activate py3129
 pip install boldigger3
 playwright install
 
-cd /Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results
+cd /Users/lauragivens/Downloads/Demo/cutadapt/results
 
 #basic structure
 #boldigger3 identify path_to_pasta --db database_nr --mode operating_mode
