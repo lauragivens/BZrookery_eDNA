@@ -1,5 +1,7 @@
 #!/bin/bash 
 
+# updated script to use remote tag for BLAST
+
 ############# Download and install command line BLAST+ ############# 
 # Windows installer: https://www.ncbi.nlm.nih.gov/books/NBK52637/
 # LINUX/UNIX installer: https://www.ncbi.nlm.nih.gov/books/NBK52640/
