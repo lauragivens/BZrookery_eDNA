@@ -1,10 +1,11 @@
 #!/bin/bash
 
 ############################# Install #############################  
-
+# install instructions for fastqc here: 
 # FastQC  https://www.bioinformatics.babraham.ac.uk/projects/fastqc/INSTALL.txt
 #conda create --name fastqc bioconda::fastqc
 # activate the environment  
+conda init
 conda activate fastqc 
 # install multiqc inside the environment
 # conda install multiqc #does not seem to work with m1 mac
@@ -20,7 +21,8 @@ multiqc --version
 
 
 # First, we are going to look at the quality of our reads  
-RAWDIR=/Users/lauragivens/Downloads/Demo #set the RAWDIR variable to the location of the sequencing files  
+RAWDIR=/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI #set the RAWDIR variable to the location of the sequencing files  
+
 OUTDIR=$RAWDIR/FQCreports_raw #name the folder where you want the fastqc reports to go  
 mkdir -p $OUTDIR #make the OUTDIR folder
 
@@ -28,7 +30,7 @@ find $RAWDIR/fastq -type f -name "*.fastq" -o -name "*.fastq.gz" | xargs fastqc 
 #makes two files for each fastq.gz file; an html and a zip file
 
 #aggregate all the fastqc files into a summary file 
-#cd $OUTDIR
+cd $OUTDIR
 #mv Undetermined_* ../UnknownBarcodes #remove undetermined reads from multiqc analysis
 
 multiqc . #run multiqc
