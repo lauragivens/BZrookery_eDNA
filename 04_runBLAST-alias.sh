@@ -32,6 +32,7 @@ echo starting BLAST against MAR alias db
 echo 
 blastn -db core_nt/MAR_taxid -query $FILES/dada2-uniqueseqs.fasta \
                 -perc_identity 97 \
+                -qcov_hsp_perc 80 \
                         -word_size 30 \
                                 -outfmt 6 \
                                         -num_threads 4 \
