@@ -21,7 +21,7 @@ library(Biostrings)
 use_condaenv(condaenv = 'cutadapt', required=TRUE)
 
 # set directories
-setwd('/Users/lauragivens/Downloads/Demo')
+setwd('/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI')
 dir_home <- getwd() #current working directory  
 dir_raw<-paste0(dir_home,'/fastq') #folder where raw fastq files are located
 dir_cut<-paste0(dir_home,'/cutadapt') #folder to write cutadapt results to 

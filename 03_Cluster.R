@@ -19,10 +19,10 @@ library(lulu)
 
 ###########################################
 # set directories
-setwd('/Users/lauragivens/Downloads/Demo')
+setwd('/Users/lauragivens/Desktop/R/BZrookery_eDNA')
 
-dir_data <- '/Users/lauragivens/Downloads/Demo/Rdata'
-dir_results <- "/Users/lauragivens/Downloads/Demo/cutadapt/results"
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 uniqueseqs <- readDNAStringSet(paste0(dir_results,'/dada2-uniqueseqs.fasta'))
 seqtab.nochim <- readRDS(file=paste0(dir_results,'/seqtab.nochim.rds'))
                          
