@@ -44,6 +44,8 @@ Load data
 dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 
+#ps.nt.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.nt.troph.rds")) #no qcov
+#ps.mar.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.troph.rds")) #no qcov
 ps.nt.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.rds"))
 ps.mar.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.troph.rds"))
 ps.bold.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.bold.rds"))
@@ -177,6 +179,7 @@ ps.bold.rel.melt <- psmelt(ps.bold.rel)
 # Basic info  
 ```{r}
 length(get_taxa_unique(ps.nt,"Species"))
+length(get_taxa_unique(ps.mar,"Species"))
 ```
 
 ```{r}
@@ -205,39 +208,6 @@ ps.bold.melt %>%
   mutate(RelAbund=Abund/sum(Abund)) %>%
   ggplot(aes(x=Class,y=Abund,fill=Order)) + 
   geom_bar(stat="identity",position="stack") + theme(axis.title.x=element_blank(),legend.text = element_text(size=8)) + facet_wrap(~Class, scales="free_x")
-```
-
-```{r}
-ps.bold.melt %>%
-  filter(.,Abundance>0) %>%  group_by(.,Order) %>% 
-  reframe(.,Order=unique(Order), 
-          Class=unique(Class),
-            db="BOLDv5",
-            Abund=sum(Abundance)) %>% 
-  mutate(RelAbund=Abund/sum(Abund)) %>%
-    treemap::treemap(  # data
-            index="Order",
-            vColor="Order",
-            vSize="RelAbund",
-            type="index",
-
-            # Main
-            title="",
-            #palette="Dark2",
-
-            # Borders:
-            border.col=c("black"),
-            border.lwds=1,
-
-            #Labels
-            #fontsize.labels=5,
-            fontcolor.labels="black",
-            #fontface.labels=1,
-            bg.labels=c("transparent"),
-            align.labels=c("left", "top"),
-            overlap.labels=0.5,
-            inflate.labels=T                        # If true, labels are bigger when rectangle is bigger.
-            )
 ```
 
 ```{r}
@@ -478,202 +448,6 @@ pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank")
   labs(x="Number of assigned taxa") + scale_fill_brewer(palette="Dark2")
 ```
 
-# Option: treemap  
-```{r}
-ps.nt.melt %>% select(-c(1:2,5:17)) %>% 
-  group_by(Class,Order,Family,Genus,Species) %>% 
-  reframe(Abundance=sum(Abundance))  %>% 
-pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
-  group_by(Rank) %>% reframe("Assigned"=sum(!is.na(value)),
-                             "Not Assigned"=sum(is.na(value))) %>% #mutate(Rel=Abundance/sum(Abundance)) %>% 
-  pivot_longer(cols=c("Not Assigned","Assigned"),names_to="val") %>%
-    treemap::treemap(  # data
-            index=c("Rank","val"),
-            vColor="Rank",
-            vSize="value",
-            type="index",
-
-            # Main
-            title="",
-            #palette="Dark2",
-
-            # Borders:
-            border.col=c("black"),
-            border.lwds=c(5,2), #widths of column borders (in rank order)
-
-            #Labels
-            fontsize.labels=c(25,10),
-            fontcolor.labels=c("black","black"),
-            #fontface.labels=1,
-            bg.labels=c("transparent"),
-            align.labels=list(c("left", "top"),
-                              c("center","center")),
-            overlap.labels=1,# number between 0 and 1 that determines the tolerance of the overlap between labels. 0 means that labels of lower levels are not printed if higher level labels overlap, 1  means that labels are always printed. In-between values, for instance the default value .5, means that lower level labels are printed if other labels do not overlap with more than .5  times their area size.
-            #inflate.labels=T                        # If true, labels are bigger when rectangle is bigger.
-            )
-```
-
-```{r}
-ps.mar.melt %>% select(-c(1:17)) %>% distinct() %>%
-  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>%
-  mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
-                             !is.na(value) ~ "Assigned"),
-         Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class"))) %>% 
-  group_by(Rank) %>% reframe(n=length(unique(value)),
-                            #isassgn=length(value[is.na(value)==TRUE]),
-                             Assigned=length(value[is.na(value)==FALSE]),
-                             NotAssigned=length(value[is.na(value)==TRUE])
-                             ) %>% rowwise() %>%
-  mutate(total=sum(n,NotAssigned)) %>% 
-  pivot_longer(cols=c("n","NotAssigned"),names_to="isassgn") %>% rowwise() %>%
-  mutate(labels=paste0()) %>%  #ggplot(aes(y=Rank,x=n)) + geom_bar(stat="identity") + 
-  treemap::treemap(  # data
-            index=c("Rank","isassgn"),
-            vColor="Rank",
-            vSize="value",
-            type="index",
-            title="",
-            border.col=c("black"),
-            border.lwds=c(5,2), #widths of column borders (in rank order)
-            fontsize.labels=c(25,15),
-            fontcolor.labels=c("black","black"),
-            #fontface.labels=1,
-            bg.labels=c("transparent"),
-            align.labels=list(c("left", "top"),
-                              c("center","center")),
-            overlap.labels=1
-            )
-```
-
-```{r}
-ps.mar.melt %>% select(-c(1:17)) %>% distinct() %>%
-  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>%
-  mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
-                             !is.na(value) ~ "Assigned"),
-         Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class"))) %>% 
-  group_by(Rank) %>% reframe(n=length(unique(value)),
-                            #isassgn=length(value[is.na(value)==TRUE]),
-                             Assigned=length(value[is.na(value)==FALSE]),
-                             NotAssigned=length(value[is.na(value)==TRUE])
-                             ) %>% rowwise() %>%
-  mutate(total=sum(n,NotAssigned)) %>% 
-  pivot_longer(cols=c("n","NotAssigned"),names_to="isassgn") %>% rowwise() %>%
-  mutate(labels=case_when(isassgn=="n" ~ paste0("Assigned: ",value),
-                          isassgn=="NotAssigned" & value>0 ~ paste0("Not Assigned: ",value))) %>%  #ggplot(aes(y=Rank,x=n)) + geom_bar(stat="identity") + 
-  #ggplot(.,aes(area=Rank, subgroup=isassgn,fill=Rank,label=labels)) + treemapify::geom_treemap()
-  treemap::treemap(  # data
-            index=c("Rank","labels"),
-            vColor="Rank",
-            vSize="value",
-            type="index",
-            title="",
-            border.col=c("black"),
-            border.lwds=c(5,2), #widths of column borders (in rank order)
-            fontsize.labels=c(25,15),
-            fontcolor.labels=c("black","black"),
-            fontface.labels=c(1,3),
-            bg.labels=c("transparent"),
-            align.labels=list(c("left", "top"),
-                              c("center","center")),
-            overlap.labels=1
-            )
-```
-
-```{r}
-tm <- ps.mar.melt %>% select(-c(1:17)) %>% distinct() %>%
-  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>%
-  mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
-                             !is.na(value) ~ "Assigned"),
-         Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class"))) %>% 
-  group_by(Rank) %>% reframe(n=length(unique(value)),
-                            #isassgn=length(value[is.na(value)==TRUE]),
-                             Assigned=length(value[is.na(value)==FALSE]),
-                             NotAssigned=length(value[is.na(value)==TRUE])
-                             ) %>% rowwise() %>%
-  mutate(total=sum(n,NotAssigned)) %>% 
-  pivot_longer(cols=c("n","NotAssigned"),names_to="isassgn") %>% rowwise() %>%
-  mutate(labels=case_when(isassgn=="n" ~ paste0("Assigned: ",value),
-                          isassgn=="NotAssigned" & value>0 ~ paste0("Not Assigned: ",value))) %>%  #ggplot(aes(y=Rank,x=n)) + geom_bar(stat="identity") + 
-  #ggplot(.,aes(area=Rank, subgroup=isassgn,fill=Rank,label=labels)) + treemapify::geom_treemap()
-  treemap::treemap(  # data
-            index=c("Rank","labels"),
-            vColor="Rank",
-            vSize="value",
-            type="index",
-            palette="Dark2"
-            )
-```
-```{r}
-tm_plot_data <- tm$tm %>% 
-  # calculate end coordinates with height and width
-  mutate(x1 = x0 + w,
-         y1 = y0 + h) %>% 
-  # get center coordinates for labels
-  mutate(x = (x0+x1)/2,
-         y = (y0+y1)/2) %>% 
-  # mark primary groupings and set boundary thickness
-  mutate(primary_group = ifelse(is.na(Rank), 1.2, .5)) %>% 
-  # remove colors from primary groupings (since secondary is already colored)
-  mutate(color = ifelse(is.na(Rank), NA, color))
-```
-```{r}
-ggplot(tm_plot_data, aes(xmin = x0, ymin = y0, xmax = x1, ymax = y1)) + 
-  # add fill and borders for groups and subgroups
-  geom_rect(aes(fill = color, size = primary_group),
-            show.legend = FALSE, color = "black", alpha = .3) +
-  scale_fill_identity() +
-  # set thicker lines for group borders
-  scale_size(range = range(tm_plot_data$primary_group)) +
-  # add labels
-  ggfittext::geom_fit_text(aes(label = labels), min.size = 1) +
-  # options
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_void()
-```
-
-```{r}
-tm_plot_data %>% 
-  ggplot(aes(xmin = x0, ymin = y0, xmax = x1, ymax = y1)) + 
-  geom_rect(aes(fill = color, size = primary_group),
-            show.legend = FALSE, color = "black", alpha = .3) +
-  geom_rect(data = filter(tm_plot_data, str_detect(labels,"Not") ),
-            aes(fill = color, size = primary_group),
-            show.legend = FALSE, color = "black", alpha = .7,linewidth=1.5,linetype=2) +
-  scale_color_brewer(palette="Dark2") +
-  scale_fill_identity() +
-  scale_size(range = range(tm_plot_data$primary_group)) +
-  ggfittext::geom_fit_text(data = filter(tm_plot_data, !is.na(labels) & !str_detect(labels,"Not") ),
-                           aes(label = Rank), min.size = 10,place="topleft",grow=TRUE) +
-  ggfittext::geom_fit_text(data = filter(tm_plot_data, Rank != "Class" ),
-                           aes(label = labels), min.size = ,place="bottom") +
-  # pick out observations of interest and annotate with geom_text_repel
-  ggrepel::geom_text_repel(
-    data = filter(tm_plot_data, !is.na(labels), Rank == "Class"), #%>% 
-      #inner_join(pokemon, by = c("type_1", "type_2")),
-    aes(x = x, y = y, label = glue::glue("{Rank} ({labels})")),
-    color = "black", xlim = c(1.02, NA), size = 4,
-    direction = "y", vjust = -1, force = 3
-  ) +
-  # expand x-axis limits to make room for test annotations
-  scale_x_continuous(limits = c(0, 1.2), expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  theme_void() + labs(title="Number of fish taxa assigned to each rank using a masked GenBank database")
-
-#ggsave("/Users/lauragivens/Downloads/taxcoverage.mar.png",width=10)
-```
-
-
-```{r}
-ps.mar.melt %>% select(-c(1:17)) %>% distinct() %>%
-  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>%
-  mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
-                             !is.na(value) ~ "Assigned"),
-         Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class"))) %>% 
-  ggplot(aes(y=Rank,fill=isassgn)) + geom_bar(stat="count") 
-```
-
-
 # Comparison figure: fish and elasmobranchs  number of assigned MAR vs BOLD 
 ```{r}
 nassigned.mar.df <- ps.mar.melt %>% select(-c(1:2,5:17)) %>% 
@@ -695,7 +469,8 @@ nassigned.mar.plot <- nassigned.mar.df %>%
   labs(x="Number of assigned taxa", title="Number of fish taxa assigned to each rank using a masked GenBank database") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=(ifelse(value>0 & value<275,value,NA))),hjust=2.5) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + theme(legend.position="right")
+  #scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + 
+  theme(legend.position="right")
 
 nassigned.mar.plot
 ```
@@ -720,7 +495,8 @@ nassigned.bold.plot <- nassigned.bold.df %>%
   labs(x="Number of assigned taxa", title="Number of fish taxa assigned to each rank using BOLD v5") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=1) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + theme(legend.position="none")
+  #scale_x_continuous(expand = c(0,NA),limits=c(0,100)) +
+  theme(legend.position="none")
 
 nassigned.bold.plot
 ```
@@ -759,7 +535,7 @@ nassigned.phy.nt.plot <- nassigned.nt.df %>%
   labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using GenBank") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=0) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,150)) + 
+  #scale_x_continuous(expand = c(0,NA),limits=c(0,150)) + 
   theme(legend.position="none")
 nassigned.phy.nt.plot
 ```
@@ -786,7 +562,8 @@ nassigned.phy.bold.plot <- nassigned.boldall.df %>%
   labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using BOLD v5") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=1) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,200)) 
+  #scale_x_continuous(expand = c(0,NA),limits=c(0,200)) + 
+  theme(legend.position="none")
 
 nassigned.phy.bold.plot
 ```
@@ -811,7 +588,7 @@ nassigned.phy.mar.plot <- nassigned.marall.df %>%
   labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using a masked GenBank database") + 
   scale_fill_brewer(palette="Dark2") + 
   geom_label(aes(label=value),hjust=1) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + 
+  #scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + 
   theme(legend.position="right")
 
 nassigned.phy.mar.plot
@@ -1432,7 +1209,7 @@ patchwork::wrap_plots(bar.patt.label, nassigned.mar.plot2, bar.bd.patt.label,nro
 
 # Session Info  
 ```{r}
-save.image("RData/OceanDNAprop.RData")
+save.image("RData/OceanDNAprop.v2.RData")
 sessionInfo()
 ```
 
