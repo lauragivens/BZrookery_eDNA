@@ -1,241 +1,105 @@
+#!/bin/Rscript
+
+########################### Setup ########################### 
+
 library(phyloseq)
 library(vegan)
 library(tidyverse)
 
+# set path variables  
 dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_man <- "/Volumes/Fuji/Mangroves"
-#dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
-dir_results <- "/Users/lauragivens/Desktop/MangroveResults"
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 setwd(dir_results) 
 
+###########################  Read in files ########################### 
 
-bold_output <- readxl::read_xlsx("dada2-uniqueseqs_identification_result.xlsx") 
-bold_output[bold_output=='no-match'] <- NA
-bold_selected <- bold_output %>% mutate(.,seqid=word(id,sep=";"),.before=1) %>% as.data.frame()
-rownames(bold_selected) <- bold_selected$seqid
+# read in BOLD file 
+# seqid as rownames
+# has NCBI taxid included
+bold_output <- readRDS(paste0(dir_results,"/taxtable.bold.taxid.rds"))
+bold_sub <- bold_output %>% filter(!is.na(Phylum))
 
+# read in taxonomy tables 
 taxa_nt_sub <- readRDS(paste0(dir_results,"/taxtable.v2.nt.rds"))
 taxa_nt_troph <- readRDS(paste0(dir_results,"/taxtable.v2.nt.wtroph.rds"))
 
-bold_sub <- bold_selected %>% filter(!is.na(Phylum) & Phylum!="IncompleteTaxonomy")
+###########################  Merge NCBI and BOLD results ########################### 
 
-View(bold_sub)
+# make vectors of the column names 
+# for bold and ncbi output  
+bold.cols <- colnames(bold_sub)
+nt.cols <- colnames(taxa_nt_sub)
 
-bold.tomerge <- (bold_sub[c(1,3:9,11)]  %>% 
-                   mutate(db=1))
-nt.tomerge <- (taxa_nt_sub[2:7] %>% 
+# make a bold dataframe 
+# with a new column for rownames
+# and fill out the df with additional columns that were in the ncbi df  
+bold.tomerge <- (bold_sub %>% 
+                   rownames_to_column(var="seqid") %>% 
+                   mutate(db=1)) 
+bold.tomerge[,nt.cols[!nt.cols%in%bold.cols]] <- NA
+
+# make a ncbi dataframe 
+# with a new column for rownames
+# and fill out the df with additional columns that were in the bold df  
+nt.tomerge <- (taxa_nt_sub %>% 
                  rownames_to_column(var="seqid") %>%
-                 mutate(db=2,pct_identity=NA,records=NA))
+                 mutate(db=2))
+nt.tomerge[,bold.cols[!bold.cols%in%nt.cols]] <- NA
 
+# merge the dfs 
+# add an additional column that identifies whether a tax assignment is from BOLD or NCBI  
 combined_tax <- rbind(bold.tomerge,
                       nt.tomerge
                       ) %>% mutate(db=case_when(db==1 ~ "BOLD",
-                                                db==2 ~ "nt"))
+                                                db==2 ~ "nt")) %>% 
+  relocate(Domain,.before=Phylum) %>% 
+  arrange(seqid)
 
-# select duplicates
-# combined_tax %>% 
-#  group_by(seqid) %>% filter(n() == 2) %>%
-#  View()
+########################### Compare tax assignments and truncate ########################### 
 
-check.tax <- combined_tax %>% 
-  group_by(seqid) %>% filter(n() == 2) %>% 
-  arrange(seqid) %>%
-  # mutate(across(everything(),!duplicated())) %>% 
-  mutate(across(where(is.character), ~ duplicated(.x), .names = "{.col}_dup"),
-         across(where(is.logical), ~ case_when( (.x==TRUE) ~ .x))
-  ) 
-
-#check.tax %>% 
-#  group_by(seqid) %>%
-#  summarize(across(where(is.character),~ unique(.x))) %>%
-#  View()
-#combined_tax %>% 
-#  group_by(seqid) %>% 
-#  filter(n()==2) %>% 
-#  summarise(across(where(is.character), ~ na.omit(.x))) %>% View()
-
-check.tax %>% 
-  group_by(seqid) %>% filter(n() == 2) %>% 
-  arrange(seqid) %>%
-  mutate_at() #case_when dup == TRUE, .default=NA? 
-  View()
-
-check.tax %>%   
-  group_by(seqid) %>% filter(n() == 2) %>% 
-  arrange(seqid) %>%
-  #mutate(Species = map_chr(Species, ~toString(sort(str_split(.x, " ")[[1]])))) %>%
-  #https://stackoverflow.com/questions/60322712/merge-rows-containing-similar-strings-using-dplyr
-  summarize(Phylum=first(Phylum),
-            Class=first(Class),
-            Order=first(Order),
-            Family=first(Family),
-            Genus=first(Genus),
-            Species=first(Species)
-            ) %>%
-  View()
-
-
-#this will combine rows that are the same but does nothing for rows where Species != Species
-check.tax %>%   
-  group_by(seqid,Phylum,Class,Order,Family,Genus,Species) %>% 
-  summarize(Phylum=first(Phylum),
-            Class=first(Class),
-            Order=first(Order),
-            Family=first(Family),
-            Genus=first(Genus),
-            Species=first(Species)
-  ) %>%
-  View()
-
-#check.tax %>%   
-#  group_by(seqid,Phylum,Class,Order,Family,Genus,Species) %>% 
-#  summarize_all(na.omit) %>%
-#  View()
-#check.tax %>%   
-#  group_by(seqid) %>% 
-#  summarize_all(na.omit) %>%
-#  View()
-check.tax %>%   
-  mutate(Class=case_when(Class=="Actinopteri" ~ "Actinopterygii",.default=Class)) %>%
+# we are going to take the combined dataframe 
+# which has one row per assignment per database  
+# which means that some seqids may have two rows 
+# we need to get to one row per seqid  
+tax.combined.df <- combined_tax %>%   
   group_by(seqid) %>% 
-  summarise_all(funs(toString(unique(na.omit(.)))))  %>% #unique for duplicated like col4
-  #mutate_all(funs(na.locf(., na.rm = FALSE, fromLast = FALSE)))%>%filter(row_number()==n()) %>%
-  #summarise_all(funs(toString(na.omit(.)))) %>%
-  View()
-
-# collapses rows and results in commas for any disagreeing cells
-check.tax %>%   
-  mutate(Class=case_when(Class=="Actinopteri" ~ "Actinopterygii",.default=Class)) %>% #replacing old version of name
-  group_by(seqid) %>% 
+  # for each sequence id, we are going to summarize every column with summarize_all
+  # ignoring any NA values  
+  # we keep the unique values  
+  # toString() essentially works like paste() 
+  # it collapses everything in a column into a single string separated by ","
+  # so for a seqid, if the tax assignment for a level is the same, it will output the unique value (e.g., Chordata)
+  # but if BOLD and NCBI disagree, it will output a comma-separated value (e.g., Chordata,Mollusca)
   summarise_all(list(~toString(unique(na.omit(.))))) %>% #unique for cells that are the same / duplicates
+  # we replace all the blank values with NA 
+  # so we can use the helpful tidy functions with NA
+  mutate_all(., list(~na_if(.,""))) %>%
+  # we then check the higher level taxa for commas    
+  # if we detect a comma in a higher level taxa
+  # but no comma in Species
+  # we are going to assume that that is a disagreement in naming convention 
+  # (one db uses an older/unaccepted name or assigned taxa to a sublevel)
+  # and we select the first value  
   mutate(across(c(Phylum,Class,Order,Family,Genus), #check the higher level taxa
-                ~ case_when(str_detect(.,",") & !str_detect(Species,",") ~ word(.,sep=","), 
-                            #if the cell has a comma in it
-                            #indicating that the two cells that merged did not agree
-                            #check if Species has a comma
-                            #if not, just keep the first value 
-                            #(because the difference is likely because of naming convention changes)
+                ~ case_when(str_detect(.,",") & !str_detect(Species,",") & !is.na(Species) ~ word(.,sep=","), 
                             .default=.x)
                 )
          ) %>% 
-  mutate_all(., list(~na_if(.,""))) %>%
-  #filter(.,grepl(",",Species)) %>% View() 
-  #look at the dataframe with commas in the Species, what does that look like
-  #was going to say anything with commas should get replaced with NA 
-  #but that also affects cells where naming convention appears to be the only difference
-  #e.g., Class name is not the same but Family and Genus are 
-  View()
-
-
-check.tax %>%   
-  group_by(seqid) %>% 
-  summarise_all(list(~toString(unique(na.omit(.))))) %>% #unique for cells that are the same / duplicates
-  mutate(across(c(Phylum,Class,Order,Family,Genus), #check the higher level taxa
-                ~ case_when(str_detect(.,",") & !str_detect(Species,",") ~ word(.,sep=","), 
-                            .default=.x)
-  )
-  ) %>% 
-  mutate_all(., list(~na_if(.,""))) %>%
+  # now we make some decisions about where to truncate assignments 
+  # based on disagreements between the databases  
+  # (indicated by a comma)
+  # basic structure is 
+  # for each level, if there is a comma and the next lower level is NA
+  # that level is assigned to NA as well 
+  # but if the next lower level is NOT NA  
+  # truncate the current level to the first assignment  
+  # 
+  # this essentially is assuming that a comma at higher levels surrounded by agreement at lower levels 
+  # indicates a difference in naming convention 
+  # instead of disagreement between actual assignments  
   mutate(Species=case_when(str_detect(Species,",") ~ NA,
-                                      .default=Species),
-         Genus=case_when(str_detect(Genus,",") & is.na(Species) ~ NA, 
-                         #if Genus has a comma and Species is NA 
-                         #Genus is NA
-                         str_detect(Genus,",") & !is.na(Species) ~ word(Genus,sep=","),
-                         #if Genus has a comma and Species has a value
-                         #keep the first value of Genus
-                         .default=Genus),
-         Family=case_when(str_detect(Family,",") & is.na(Genus) ~ NA, 
-                         #if Family has a comma and Genus is NA 
-                         #Family is NA
-                         str_detect(Family,",") & !is.na(Genus) ~ word(Family,sep=","),
-                         #if Family has a comma and Genus has a value
-                         #keep the first value of Family
-                         .default=Family),
-         Order=case_when(str_detect(Order,",") & is.na(Family) ~ NA, 
-                         #if Order has a comma and Family is NA 
-                         #Order is NA
-                         str_detect(Order,",") & !is.na(Family) ~ word(Order,sep=","),
-                         #if Order has a comma and Family has a value
-                         #keep the first value of Order
-                         .default=Order),
-         Class=case_when(str_detect(Class,",") & is.na(Order) ~ NA, 
-                         #if Class has a comma and Order is NA 
-                         #Class is NA
-                         str_detect(Class,",") & !is.na(Order) ~ word(Class,sep=","),
-                         #if Class has a comma and Order has a value
-                         #keep the first value of Class
-                         .default=Class),
-         Phylum=case_when(str_detect(Phylum,",") & is.na(Class) ~ NA, 
-                         #if Phylum has a comma and Class is NA 
-                         #Phylum is NA
-                         str_detect(Phylum,",") & !is.na(Class) ~ word(Phylum,sep=","),
-                         #if Phylum has a comma and Class has a value
-                         #keep the first value of Phylum
-                         .default=Phylum)
-         ) %>%
-  View()
-
-
-combined_tax %>%   
-  group_by(seqid) %>% 
-  summarise_all(list(~toString(unique(na.omit(.))))) %>% #unique for cells that are the same / duplicates
-  mutate(across(c(Phylum,Class,Order,Family,Genus), #check the higher level taxa
-                ~ case_when(str_detect(.,",") & !str_detect(Species,",") ~ word(.,sep=","), 
-                            .default=.x)
-  )
-  ) %>% 
-  mutate_all(., list(~na_if(.,""))) %>%
-  mutate(Species=case_when(str_detect(Species,",") ~ NA,
-                           .default=Species),
-         Genus=case_when(str_detect(Genus,",") & is.na(Species) ~ NA, 
-                         #if Genus has a comma and Species is NA 
-                         #Genus is NA
-                         str_detect(Genus,",") & !is.na(Species) ~ word(Genus,sep=","),
-                         #if Genus has a comma and Species has a value
-                         #keep the first value of Genus
-                         .default=Genus),
-         Family=case_when(str_detect(Family,",") & is.na(Genus) ~ NA, 
-                          #if Family has a comma and Genus is NA 
-                          #Family is NA
-                          str_detect(Family,",") & !is.na(Genus) ~ word(Family,sep=","),
-                          #if Family has a comma and Genus has a value
-                          #keep the first value of Family
-                          .default=Family),
-         Order=case_when(str_detect(Order,",") & is.na(Family) ~ NA, 
-                         #if Order has a comma and Family is NA 
-                         #Order is NA
-                         str_detect(Order,",") & !is.na(Family) ~ word(Order,sep=","),
-                         #if Order has a comma and Family has a value
-                         #keep the first value of Order
-                         .default=Order),
-         Class=case_when(str_detect(Class,",") & is.na(Order) ~ NA, 
-                         #if Class has a comma and Order is NA 
-                         #Class is NA
-                         str_detect(Class,",") & !is.na(Order) ~ word(Class,sep=","),
-                         #if Class has a comma and Order has a value
-                         #keep the first value of Class
-                         .default=Class),
-         Phylum=case_when(str_detect(Phylum,",") & is.na(Class) ~ NA, 
-                          #if Phylum has a comma and Class is NA 
-                          #Phylum is NA
-                          str_detect(Phylum,",") & !is.na(Class) ~ word(Phylum,sep=","),
-                          #if Phylum has a comma and Class has a value
-                          #keep the first value of Phylum
-                          .default=Phylum)
-  ) %>%
-  View()
-
-tax.combined.df <- combined_tax %>%   
-  group_by(seqid) %>% 
-  summarise_all(list(~toString(unique(na.omit(.))))) %>% #unique for cells that are the same / duplicates
-  mutate(across(c(Phylum,Class,Order,Family,Genus), #check the higher level taxa
-                ~ case_when(str_detect(.,",") & !str_detect(Species,",") ~ word(.,sep=","), 
-                            .default=.x)
-  )
-  ) %>% 
-  mutate_all(., list(~na_if(.,""))) %>%
-  mutate(Species=case_when(str_detect(Species,",") ~ NA,
+                           #if there is a comma in species, we replace that with NA
                            .default=Species),
          Genus=case_when(str_detect(Genus,",") & is.na(Species) ~ NA, 
                          #if Genus has a comma and Species is NA 
@@ -279,6 +143,8 @@ tax.combined.df %>% filter(Phylum=="Chordata") %>% .$Species %>% unique() %>% le
 #are any seqids repeated? 
 summary(duplicated(tax.combined.df$seqid))
 
+########################### Replace middle NA values ########################### 
+
 # Now we have some weird values from the nt tax database that didn't fill out correctly
 # they leave an NA and fill the rest of the taxonomy 
 # how do we fill that in if we have the information  
@@ -286,8 +152,35 @@ summary(duplicated(tax.combined.df$seqid))
 # TBD  
 
 
-# --------------------------------------------------------------------------------- #
+########################### Add trait info ########################### 
+
+# upload trophic data
+bzfishmeta <- read.csv(paste0(dir_man,'/BelizeanFishSpecies.csv'),header=TRUE)
+bzfishmeta <- bzfishmeta %>% dplyr::rename(., "taxid" = "NCBI_taxid", 
+                                           "Species.Abundance" = "Abundance") %>% 
+  mutate(taxid=as.character(taxid)) %>% 
+  select(-c(starts_with("AccNo"),'Species.name')) 
+
+names(bzfishmeta) <- trimws(names(bzfishmeta)) 
+names(bzfishmeta) <- gsub("_",".",names(bzfishmeta))
+
+bzfishmeta <- bzfishmeta %>% filter(!is.na(taxid))
+bzfishmeta <- bzfishmeta %>% mutate(Trophic.Level=word(Trophic.Index,sep=" ") %>% as.numeric(),
+                                    Trophic.Rounded=round(Trophic.Level,digits=0),
+                                    .after="Trophic.Index"
+)
+
+# combine trophic and tax data  
+taxa_troph <-  left_join((tax.combined.df #%>% select(c(seqid,14:21))
+             ),
+            bzfishmeta,by='taxid') %>% as.data.frame()
+
+rownames(taxa_troph) <- taxa_troph$seqid
+taxa_troph <- taxa_troph %>% select(-c('seqid')) %>% relocate(taxid,.after='Species')
+
+########################### Make new PS object ########################### 
 # conform tax table  
+tax.combined.df <- as.data.frame(tax.combined.df)
 rownames(tax.combined.df) <- tax.combined.df$seqid
 
 # upload asv table  
@@ -304,17 +197,24 @@ samplelist$SampleName_Long <- NULL
 # assemble ps object
 otu <- otu_table((curated_asv),taxa_are_rows = TRUE)
 meta <- sample_data(samplelist)
-tax <- tax_table(as.matrix(tax.combined.df))
+tax <- tax_table(as.matrix(tax.combined.df %>% select(-seqid)))
+tax.troph <- tax_table(as.matrix(taxa_troph))
 
 ps <- phyloseq(otu,meta,tax)
+ps.troph <- phyloseq(otu,meta,tax.troph)
 ps
+ps.troph
 
-##########################################################################################################
-# Save 
+########################### Save ########################### 
 saveRDS(ps,paste0(dir_results,"/ps.combined.rds"))
+saveRDS(ps.troph,paste0(dir_results,"/ps.troph.combined.rds"))
 
 write.csv(tax.combined.df,paste0(dir_results,"/tax.combined.df.csv"))
 saveRDS(tax.combined.df,paste0(dir_results,"/tax.combined.df.rds"))
+
+write.csv(taxa_troph,paste0(dir_results,"/tax.troph.combined.df.csv"))
+saveRDS(taxa_troph,paste0(dir_results,"/tax.troph.combined.df.rds"))
+
 save.image(paste0(dir_data,'/CombineBOLDnt.RData'))
 
 

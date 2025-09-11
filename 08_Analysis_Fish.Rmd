@@ -369,6 +369,10 @@ ps.mar.pa.melt %>% filter(Abundance > 0) %>%
   mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
   ) %>% 
   ggplot(aes(x=Month,fill=New,y=Rel)) + geom_bar(stat="identity",position="stack") + facet_grid(Site ~ Rookery) + guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) + theme_bw() + labs(y="Relative Abundance")
+
+
+ggsave("/Users/lauragivens/Downloads/hannahfig1.png")
+
 ```
 
 That is a lot of commercially relevant species. Does that track?  
@@ -441,7 +445,7 @@ ps.mar.pa.melt %>% filter(Abundance > 0) %>%
 ```
 
 ```{r}
-plot_ordination(ps.mar.pa,ordinate(ps.mar.pa,method="NMDS"),color="Side") + facet_grid(Site~Rookery) + theme_bw()
+plot_ordination(ps.mar.pa,ordinate((ps.mar.pa %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)),method="NMDS"),color="Side") + facet_grid(Site~Rookery) + theme_bw()
 #ggsave("/Users/lauragivens/Downloads/leeward.windward.nmds.png",width=7,height=5)
 ```
 
