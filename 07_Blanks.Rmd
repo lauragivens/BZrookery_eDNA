@@ -139,6 +139,10 @@ So before removing them, we should take a look at what the best way to remove th
 ## Compare blanks with high/low sample sums  
 Is there much of a difference in ASVs that are found in blanks with a higher or lower number of sequences?   
 ```{r}
+sample_sums(ps) %>% sort() %>% head()
+```
+
+```{r}
 x <- prune_samples(sample_sums(ps.blanks)<100, #get names of asvs in blanks with less than 100 sequences  
                    ps.blanks) %>% 
   prune_taxa(taxa_sums(.)>0,.) %>% 
