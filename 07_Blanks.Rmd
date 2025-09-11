@@ -16,39 +16,31 @@ library(decontam)
 
 Load data  
 ```{r load}
-dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
-dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+dir_home <- '/Users/lauragivens/Downloads/Demo'
+dir_data <- paste0(dir_home,"/Rdata")
+dir_results <- "/Users/lauragivens/Downloads/Demo/cutadapt/results"
+setwd(dir_results)
 
-ps <- readRDS(paste0(dir_results,"/ps.v2.rds"))
-ps.troph <- readRDS(paste0(dir_results,"/ps.v2.troph.rds"))
-
-taxa <- readRDS(paste0(dir_results,"/taxtable.v2.rds"))
-taxa_troph <- readRDS(paste0(dir_results,"/taxtable.v2.wtroph.rds"))
-curated_lulu <- readRDS(paste0(dir_results,'/lulu-clustertable.rds'))
-curated_asv <- readRDS(paste0(dir_results,"/asvtable.rds"))
-samplelist <- readRDS(paste0(dir_results,'/metadata.rds'))
+ps <- readRDS(paste0(dir_home,"/ps.rds"))
 ```
 Alternatively, load working environment:  
-```{r load_env}
+```{r load_env,eval=FALSE}
 load(paste0(dir_data,'/07_Blanks.RData'))
 ```
 
+Check metadata  
 ```{r}
-troph_edit <- taxa_troph %>% mutate(.,
-                      Trophic.Base = word(Trophic.Index,sep=" ") %>% as.numeric(),
-                      Trophic.Round = round(as.numeric(Trophic.Base)),
-                      .after = Trophic.Index
-                      ) 
-
-tax_table(ps.troph) <- as.matrix(troph_edit)
-
+samplelist <- sample_data(ps) %>% as.matrix() %>% as.data.frame()
+```
+What changes need to be made?  
+```{r}
 samplelist[samplelist==""] <- NA
-samplelist[samplelist=="."] <- NA
 samplelist$Date <- lubridate::dmy(samplelist$Date)
 samplelist$Date_Extracted <- lubridate::dmy(samplelist$Date_Extracted)
+
 samplelist$Quant_nguL <- as.numeric(samplelist$Quant_nguL) %>% round(digits = 2)
 samplelist$Quant_nguL[is.na(samplelist$Quant_nguL)] <- 0
-#samplelist$Month <- lubridate::month(samplelist$Date)
+
 samplelist <- samplelist %>% mutate(.,
                                     Rookery=case_when(Rookery=="R" ~ "Rookery",
                                                       Rookery=="NR" ~ "Non-rookery",
@@ -66,14 +58,18 @@ samplelist <- samplelist %>% mutate(.,
                                                    Side=="W" ~ "Windward")
                                     )
 
-sample_data(ps.troph) <- samplelist
+sample_data(ps) <- samplelist
+```
+
+```{r}
+samplelist
 ```
 
 # Blanks  
 
 Make a phyloseq object of only the blanks. How many sequences are in each? 
 ```{r}
-ps.blanks <- ps.troph %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
+ps.blanks <- ps %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
 
 blank.asvs <- taxa_names(ps.blanks)
 
@@ -134,8 +130,8 @@ x[!x%in%y] #how many asvs are only in the <100 dataset
 
 Not really. Looking below, when we prune the dataset to only the blank ASVs, the spread is pretty similar regardless of whether they are from blanks with high or low abundance.  
 ```{r}
-sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%x,.)) %>% summary()
-sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%y,.)) %>% summary()
+sample_sums(ps %>% prune_taxa(taxa_names(.)%in%x,.)) %>% summary()
+sample_sums(ps %>% prune_taxa(taxa_names(.)%in%y,.)) %>% summary()
 ```
 compared to the blanks:  
 ```{r}
@@ -148,11 +144,11 @@ When we remove the ASVs from the blanks, it only removes the specific sequence. 
 
 However, this isn't what we find. Removal of blank ASVs isn't compensated for with other ASVs, and the number of sequences still assigned to those taxa drops dramatically.     
 ```{r}
-ps.troph %>%  #sample sums when subset to only species in the blanks
+ps %>%  #sample sums when subset to only species in the blanks
   subset_taxa(.,Species%in%(get_taxa_unique(ps.blanks,"Species"))) %>% 
   sample_sums() %>% summary()
 
-(ps.troph %>% prune_taxa(!taxa_names(.)%in%taxa_names(ps.blanks),.)) %>%  #sample sums when subset to only species in the blanks
+(ps %>% prune_taxa(!taxa_names(.)%in%taxa_names(ps.blanks),.)) %>%  #sample sums when subset to only species in the blanks
   subset_taxa(.,Species%in%(get_taxa_unique(ps.blanks,"Species"))) %>% 
   sample_sums() %>% summary()
 ```
@@ -177,7 +173,7 @@ _Using the “prevalence” method_, the prevalence (presence/absence across sam
 
 We’ll summarize the sample variable that holds the negative control information as a logical variable, with TRUE for control samples, as that is the form required by isContaminant.  
 ```{r}
-ps.decontam <- ps.troph %>% subset_samples(Site != "Practice") %>% prune_samples(sample_sums(.)>0,.)
+ps.decontam <- ps %>% subset_samples(Site != "Practice") %>% prune_samples(sample_sums(.)>0,.)
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Field"
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Lab"
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Extraction"
@@ -294,23 +290,23 @@ sum(taxa_sums(prune_taxa(taxa_names(ps)%in%contamdf.names,ps))) / sum(taxa_sums(
 0.09% of the sequences  
 
 ```{r}
-sample_sums(ps.troph %>% prune_taxa(taxa_names(.)%in%contamdf.names,.)) %>% summary()
+sample_sums(ps %>% prune_taxa(taxa_names(.)%in%contamdf.names,.)) %>% summary()
 ```
 
 Remove samples with less than 
 ```{r}
-decontam.ps.troph <- ps.troph %>% 
+decontam.ps <- ps %>% 
   #prune_samples(sample_sums(.)>50,.) %>% 
   prune_taxa(!taxa_names(.)%in%contamdf.names,.)#%>% 
   #subset_samples(., Rookery != 'Practice') 
 
-ps.troph
-decontam.ps.troph
+ps
+decontam.ps
 ```
 ## Blanks  
 After decontamination, we are next going to get a list of ASVs that appear in the blanks and their quantities, and remove that number from each sample from that site.    
 ```{r}
-ps.blanks <- decontam.ps.troph %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
+ps.blanks <- decontam.ps %>% subset_samples(.,Rookery=='Blank') %>% prune_taxa(taxa_sums(.)>0,.)
 ```
 
 We have field blanks, lab blanks, extraction blanks, and PCR blanks.  
@@ -341,7 +337,7 @@ ps.blanks %>% subset_samples(Site=="Lab" | Site=="Field") %>% sample_names()
 
 Going in order:  
 ```{r}
-prune_a.ps <- decontam.ps.troph
+prune_a.ps <- decontam.ps
 ```
 
 ### Field and lab blanks   
@@ -384,10 +380,10 @@ for (p in 1:length(c)) { #for each negative control sample
 }
 
 #in neg
-otu_table(decontam.ps.troph)[b[1],c]
+otu_table(decontam.ps)[b[1],c]
 
 #before
-otu_table(decontam.ps.troph)[b[1],a] #samples from that sampling event
+otu_table(decontam.ps)[b[1],a] #samples from that sampling event
 
 #after
 otu_table(prune_a.ps)[b[1],a]
@@ -425,10 +421,10 @@ for (p in 1:length(c)) { #for each negative control sample
 Check
 ```{r}
 #in neg
-otu_table(decontam.ps.troph)[b[1],c]
+otu_table(decontam.ps)[b[1],c]
 
 #before
-otu_table(decontam.ps.troph)[b[1],a] #samples from that sampling event
+otu_table(decontam.ps)[b[1],a] #samples from that sampling event
 
 #after
 otu_table(prune_a.ps)[b[1],a]
@@ -594,7 +590,7 @@ otu_table(prune_c.ps)[b,a[5:10]]
 
 ### Final
 ```{r}
-prune.decontam.ps.troph <- prune_c.ps %>% subset_samples(Rookery!="Blank")
+prune.decontam.ps <- prune_c.ps %>% subset_samples(Rookery!="Blank")
 ```
 
 # Overview   
@@ -604,19 +600,19 @@ ps.blanks %>% plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,sca
 ```
 Before decontaminant removal  
 ```{r}
-ps.troph %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+ps %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
   plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
   labs(title="Abundance of ASVs found in negative controls in total dataset",x="Sample Name")
 ```
 After decontaminant removal  
 ```{r}
-decontam.ps.troph  %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+decontam.ps  %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
   plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
   labs(title="Abundance of ASVs found in negative controls in total dataset after decontaminant removal",x="Sample Name")
 ```
 After negative control ASV removal  
 ```{r}
-prune.decontam.ps.troph %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+prune.decontam.ps %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
   plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
   labs(title="Abundance of ASVs found in negative controls in total dataset after subtracting number of ASVs in negative controls ",x="Sample Name")
 ```
@@ -624,10 +620,10 @@ prune.decontam.ps.troph %>% subset_samples(Rookery!="Blank" & Rookery!="Practice
 
 # Session Info   
 ```{r}
-saveRDS(decontam.ps.troph,paste0(dir_results,"/decontam.v2.ps.troph.rds"))
+saveRDS(decontam.ps,paste0(dir_results,"/decontam.v2.ps.rds"))
 
-saveRDS(prune_c.ps,paste0(dir_results,"/prune.decontam.v2.ps.troph.keepblanks.rds"))
-saveRDS(prune.decontam.ps.troph,paste0(dir_results,"/prune.decontam.v2.ps.troph.rds"))
+saveRDS(prune_c.ps,paste0(dir_results,"/prune.decontam.v2.ps.keepblanks.rds"))
+saveRDS(prune.decontam.ps,paste0(dir_results,"/prune.decontam.v2.ps.rds"))
 ```
 
 ```{r}
