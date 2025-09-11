@@ -19,7 +19,7 @@ Load data
 dir_home <- '/Users/lauragivens/Downloads/Demo'
 dir_data <- paste0(dir_home,"/Rdata")
 dir_results <- "/Users/lauragivens/Downloads/Demo/cutadapt/results"
-setwd(dir_results)
+#setwd(dir_results)
 
 ps <- readRDS(paste0(dir_home,"/ps.rds"))
 ```
@@ -78,36 +78,34 @@ sample_sums(ps.blanks) %>% sort()
 ```
 
 ## Percent of sequences/ASVs  
+We want to identify what taxa are in the blanks, and whether it's better to remove all blank ASVs from the dataset or do some other method.  
+
 How many ASVs are in the blanks?  
 ```{r}
 length(blank.asvs)
+length(taxa_names(ps))
 ```
 What percent of taxa do those ASVs comprise?  
 ```{r}
 ntaxa(prune_taxa(taxa_names(ps)%in%blank.asvs,ps)) / ntaxa(ps) * 100
 ```
- 
 
 What percent of sequences do those ASVs comprise?  
 ```{r}
 sum(taxa_sums(prune_taxa(taxa_names(ps)%in%blank.asvs,ps))) / sum(taxa_sums(ps)) * 100
 ```
 
-
 And how many of those are in the blank samples themselves?  
 ```{r}
 sum(taxa_sums(ps.blanks)) / sum(taxa_sums(ps)) * 100
 ```
-
-
-We want to identify what taxa are in the blanks, and whether it's better to remove all blank ASVs from the dataset or do some other method.  
 
 ## What taxa are in blanks  
 Are these useful/biologically relevant taxa? Or are they contaminants like human, feline, canine DNA?   
 ```{r}
 get_taxa_unique(ps.blanks,"Species")
 ```
-Many of these are fisheries-relevant or otherwise target fish species.  
+Some of these are fisheries-relevant or otherwise target fish species.  
 
 So before removing them, we should take a look at what the best way to remove them would be.   
 
