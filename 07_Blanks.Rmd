@@ -3,6 +3,7 @@ title: "Remove blanks"
 output: html_output
 ---
 (save as _output: html_notebook_ for updated nb.html doc; but it will *only* save output that in the viewer pane/window, it will not rerun chunks to generate new output.)  
+
 # Load  
 Load libraries  
 ```{r,message=FALSE}
@@ -56,6 +57,10 @@ samplelist <- sample_data(ps) %>% as.matrix() %>% as.data.frame()
 ```
 What changes need to be made?  
 ```{r}
+samplelist
+```
+
+```{r,eval=FALSE}
 samplelist[samplelist==""] <- NA
 samplelist$Date <- lubridate::dmy(samplelist$Date)
 samplelist$Date_Extracted <- lubridate::dmy(samplelist$Date_Extracted)
