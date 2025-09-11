@@ -2,8 +2,8 @@ library(phyloseq)
 library(vegan)
 library(tidyverse)
 
-dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_home <- '/Users/lauragivens/Downloads/Demo'
+dir_data <- paste0(dir_home,"/Rdata")
 dir_results <- "/Users/lauragivens/Downloads/Demo/cutadapt/results"
 setwd(dir_results)
 
@@ -94,6 +94,9 @@ ps
 ##########################################################################################################
 # Save nt 
 saveRDS(ps,paste0(dir_results,"/ps.rds"))
+
+saveRDS(curated_asv,paste0(dir_results,"/asvtable.rds"))
+saveRDS(meta.tab,paste0(dir_results,'/metadata.rds'))
 
 saveRDS(taxa_sub,paste0(dir_results,"/taxtable.rds"))
 write.csv(taxa_sub,paste0(dir_results,"/taxtable.csv"))
