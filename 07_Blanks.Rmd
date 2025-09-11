@@ -23,7 +23,29 @@ dir_results <- "/Users/lauragivens/Downloads/Demo/cutadapt/results"
 
 ps <- readRDS(paste0(dir_home,"/ps.rds"))
 ```
-Alternatively, load working environment:  
+
+Alternatively, make the ps object
+```{r makeps,eval=FALSE}
+setwd("/Users/lauragivens/Downloads/Demo")
+tax.tab <- read.csv("taxa.troph.csv",row.names = 1)
+meta.tab <- read.csv("samplelist.csv",row.names = 1)
+
+curated_lulu <- readRDS('curated_lulu.rds')
+# Need to extract the table from the lulu object   
+asv.tab <- curated_lulu$curated_table
+# Column names will not match our sample names
+# we need to change that  
+cols_asv <- word(colnames(asv.tab),sep = "_",end=3) 
+colnames(asv.tab) <- cols_asv
+
+otu <- otu_table((asv.tab),taxa_are_rows = TRUE)
+meta <- sample_data(meta.tab)
+tax <- tax_table(as.matrix(tax.tab))
+
+ps <- phyloseq(otu,meta,tax)
+```
+
+Or, load working environment:  
 ```{r load_env,eval=FALSE}
 load(paste0(dir_data,'/07_Blanks.RData'))
 ```
