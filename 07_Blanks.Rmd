@@ -105,7 +105,7 @@ sample_sums(ps.blanks) %>% sort()
 ```
 
 ## Percent of sequences/ASVs  
-We want to identify what taxa are in the blanks, and whether it's better to remove all blank ASVs from the dataset or do some other method.  
+We want to identify what taxa are in the blanks, and whether its better to remove all blank ASVs from the dataset or do some other method.  
 
 How many ASVs are in the blanks?  
 ```{r}
@@ -206,8 +206,11 @@ ps.decontam <- ps %>% subset_samples(Site != "Practice") %>% prune_samples(sampl
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Field"
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Lab"
 sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "Extraction"
+sample_data(ps.decontam)$is.neg <- sample_data(ps.decontam)$Site == "PCR"
 
 sample_data(ps.decontam)$Quant_nguL[sample_data(ps.decontam)$Quant_nguL==0] <- 0.000000001
+
+sample_data(ps.decontam)$Quant_nguL[is.na(sample_data(ps.decontam)$Quant_nguL)] <- 0.000000001
 # don't want to include the PCR blanks  
 ```
 ```{r}
@@ -626,25 +629,29 @@ prune.decontam.ps <- prune_c.ps %>% subset_samples(Rookery!="Blank")
 # Overview   
 Blanks  
 ```{r}
-ps.blanks %>% plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + labs(title="ASV abundance of negative controls and blanks",x="Sample Name")
+ps.blanks %>% plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + labs(title="ASV abundance of negative controls and blanks",x="Sample Name") + theme(legend.position="none")
 ```
 Before decontaminant removal  
 ```{r}
-ps %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+x <- ps %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
   plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
-  labs(title="Abundance of ASVs found in negative controls in total dataset",x="Sample Name")
+  labs(title="Abundance of ASVs found in negative controls in total dataset",x="Sample Name")+ theme(legend.position="none")
 ```
 After decontaminant removal  
 ```{r}
-decontam.ps  %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+y <- decontam.ps  %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
   plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
-  labs(title="Abundance of ASVs found in negative controls in total dataset after decontaminant removal",x="Sample Name")
+  labs(title="Abundance of ASVs found in negative controls in total dataset after decontaminant removal",x="Sample Name") + theme(legend.position="none")
 ```
 After negative control ASV removal  
 ```{r}
-prune.decontam.ps %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
-  plot_bar(x="SampleName_Short",fill="Genus") + facet_grid(~Site,scales="free") + 
-  labs(title="Abundance of ASVs found in negative controls in total dataset after subtracting number of ASVs in negative controls ",x="Sample Name")
+z <- prune.decontam.ps %>% subset_samples(Rookery!="Blank" & Rookery!="Practice") %>% prune_taxa(taxa_names(.)%in%taxa_names(ps.blanks),.) %>%
+  plot_bar(x="SampleName_Short",fill="Class") + facet_grid(~Site,scales="free") + 
+  labs(title="Abundance of ASVs found in negative controls in total dataset after subtracting number of ASVs in negative controls ",x="Sample Name") #+ theme(legend.position="none")
+```
+
+```{r}
+patchwork::wrap_plots(x,y,z) & theme(legend.position="none")
 ```
 
 
