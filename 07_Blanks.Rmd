@@ -86,19 +86,19 @@ What percent of taxa do those ASVs comprise?
 ```{r}
 ntaxa(prune_taxa(taxa_names(ps)%in%blank.asvs,ps)) / ntaxa(ps) * 100
 ```
-7.48% of taxa    
+ 
 
 What percent of sequences do those ASVs comprise?  
 ```{r}
 sum(taxa_sums(prune_taxa(taxa_names(ps)%in%blank.asvs,ps))) / sum(taxa_sums(ps)) * 100
 ```
-57.56% of the sequences  
+
 
 And how many of those are in the blank samples themselves?  
 ```{r}
 sum(taxa_sums(ps.blanks)) / sum(taxa_sums(ps)) * 100
 ```
-<1% of ASVs are found in the blanks
+
 
 We want to identify what taxa are in the blanks, and whether it's better to remove all blank ASVs from the dataset or do some other method.  
 
@@ -281,13 +281,13 @@ What percent of taxa do those ASVs comprise?
 ```{r}
 length(contamdf.names) / ntaxa(ps) * 100
 ```
-0.603% of taxa     
+    
 
 What percent of sequences do those ASVs comprise?  
 ```{r}
 sum(taxa_sums(prune_taxa(taxa_names(ps)%in%contamdf.names,ps))) / sum(taxa_sums(ps)) * 100
 ```
-0.09% of the sequences  
+ 
 
 ```{r}
 sample_sums(ps %>% prune_taxa(taxa_names(.)%in%contamdf.names,.)) %>% summary()
@@ -303,6 +303,7 @@ decontam.ps <- ps %>%
 ps
 decontam.ps
 ```
+
 ## Blanks  
 After decontamination, we are next going to get a list of ASVs that appear in the blanks and their quantities, and remove that number from each sample from that site.    
 ```{r}
