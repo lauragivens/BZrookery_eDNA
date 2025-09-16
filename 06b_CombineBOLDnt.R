@@ -21,8 +21,8 @@ bold_output <- readRDS(paste0(dir_results,"/taxtable.bold.taxid.rds"))
 bold_sub <- bold_output %>% filter(!is.na(Phylum))
 
 # read in taxonomy tables 
-taxa_nt_sub <- readRDS(paste0(dir_results,"/taxtable.v2.nt.rds"))
-taxa_nt_troph <- readRDS(paste0(dir_results,"/taxtable.v2.nt.wtroph.rds"))
+taxa_nt_sub <- readRDS(paste0(dir_results,"/taxtable.wordsize.nt.rds"))
+taxa_nt_troph <- readRDS(paste0(dir_results,"/taxtable.wordsize.nt.wtroph.rds"))
 
 ###########################  Merge NCBI and BOLD results ########################### 
 
@@ -206,16 +206,16 @@ ps
 ps.troph
 
 ########################### Save ########################### 
-saveRDS(ps,paste0(dir_results,"/ps.combined.rds"))
-saveRDS(ps.troph,paste0(dir_results,"/ps.troph.combined.rds"))
+saveRDS(ps,paste0(dir_results,"/ps.combined.wordsize.rds"))
+saveRDS(ps.troph,paste0(dir_results,"/ps.troph.combined.wordsize.rds"))
 
-write.csv(tax.combined.df,paste0(dir_results,"/tax.combined.df.csv"))
-saveRDS(tax.combined.df,paste0(dir_results,"/tax.combined.df.rds"))
+write.csv(tax.combined.df,paste0(dir_results,"/tax.combined.wordsize.df.csv"))
+saveRDS(tax.combined.df,paste0(dir_results,"/tax.combined.wordsize.df.rds"))
 
-write.csv(taxa_troph,paste0(dir_results,"/tax.troph.combined.df.csv"))
-saveRDS(taxa_troph,paste0(dir_results,"/tax.troph.combined.df.rds"))
+write.csv(taxa_troph,paste0(dir_results,"/tax.troph.combined.wordsize.df.csv"))
+saveRDS(taxa_troph,paste0(dir_results,"/tax.troph.combined.wordsize.df.rds"))
 
-save.image(paste0(dir_data,'/CombineBOLDnt.RData'))
+save.image(paste0(dir_data,'/CombineBOLDnt.wordsize.RData'))
 
 
 
