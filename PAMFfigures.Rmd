@@ -35,7 +35,7 @@ ggplot2::theme_set(theme_cowplot() + theme(
 ))
 ```
 
-```{r}
+```{r,eval=FALSE}
 load("RData/OceanDNAprop.RData")
 ```
 
@@ -44,11 +44,12 @@ Load data
 dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
 
-ps.nt.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.nt.troph.rds")) #no qcov
-ps.mar.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.troph.rds")) #no qcov
-#ps.nt.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.rds"))
-#ps.mar.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.troph.rds"))
+#ps.nt.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.nt.troph.rds")) #no qcov
+#ps.mar.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.troph.rds")) #no qcov
+ps.nt.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.nt.troph.rds"))
+ps.mar.all <- readRDS(paste0(dir_results,"/prune.decontam.v2.ps.troph.rds"))
 ps.bold.all <- readRDS(paste0(dir_results,"/prune.decontam.ps.bold.rds"))
+ps.comb.all  <- readRDS(paste0(dir_results,"/prune.decontam.combined.wordsize.ps.rds"))
 
 #taxa_nt <- readRDS(paste0(dir_results,"/prune.decontam.ps.nt.troph.rds"))
 #taxa_mar <- readRDS(paste0(dir_results,"/taxtable.wtroph.rds"))
@@ -60,6 +61,8 @@ samplelist <- meta %>% filter(Rookery!="Practice" & Rookery !="Blank")
 ps.nt.c <- ps.nt.all %>% subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
   subset_taxa(Phylum=="Chordata") 
 ps.mar.c <- ps.mar.all %>% subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
+  subset_taxa(Phylum=="Chordata") 
+ps.comb.c <- ps.comb.all %>% subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
   subset_taxa(Phylum=="Chordata") 
 ```
 Fix randomly unassigned Order 
@@ -73,23 +76,31 @@ newnttax$Species[str_detect(newnttax$Species,"sp")] <- NA
 newnttax$Species[str_detect(newnttax$Species,"-")] <- NA
 newnttax$Species[str_detect(newnttax$Species,"environmental")] <- NA
 
-naordfamlist <- newnttax %>% filter(is.na(Order)) %>% .$Family %>% unique() %>% sort()
-naordlist <- c("Mugiliformes", #Ambassidae
+naordfamlist <- newnttax %>% 
+  filter(is.na(Order)) %>% #for which assignments is Order blank
+  .$Family %>% #get the family assignments for those taxa  
+  unique() %>% sort()
+naordfamlist 
+#"Centropomidae" "Moronidae"     "Pomacanthidae" "Pomacentridae" "Sciaenidae"    "Sphyraenidae" 
+
+# from this list, manually assign the correct order name  
+naordlist <- c(#"Mugiliformes", #Ambassidae
                "Carangiformes", #Centropomidae
-               "Blenniiformes", #Embiotocidae
+               #"Blenniiformes", #Embiotocidae
                "Acanthuriformes", #Moronidae
-               "Blenniiformes", #Plesiopidae
-               "Carangiformes", #Polynemidae
+               #"Blenniiformes", #Plesiopidae
+               #"Carangiformes", #Polynemidae
                "Acanthuriformes", #Pomacanthidae
                "Blenniiformes", #Pomacentridae
-               "Blenniiformes", #Pseudochromidae
+               #"Blenniiformes", #Pseudochromidae
                "Acanthuriformes", #Sciaenidae
-               "Acanthuriformes", #Sillaginidae
-               "Carangiformes", #Sphyraenidae
-               "Squatiniformes" #Squatinidae
+               #"Acanthuriformes", #Sillaginidae
+               "Carangiformes" #Sphyraenidae
+               #"Squatiniformes" #Squatinidae
                )
 
 naordf <- data.frame(fam=naordfamlist,ord=naordlist)
+naordf #check to make sure they match up 
 
 newnttax <- newnttax %>% mutate(Order=case_when(
   is.na(Order) & Family==naordf[1,1] ~ naordf[1,2],
@@ -98,19 +109,12 @@ newnttax <- newnttax %>% mutate(Order=case_when(
   is.na(Order) & Family==naordf[4,1] ~ naordf[4,2],
   is.na(Order) & Family==naordf[5,1] ~ naordf[5,2],
   is.na(Order) & Family==naordf[6,1] ~ naordf[6,2],
-  is.na(Order) & Family==naordf[7,1] ~ naordf[7,2],
-  is.na(Order) & Family==naordf[8,1] ~ naordf[8,2],
-  is.na(Order) & Family==naordf[9,1] ~ naordf[9,2],
-  is.na(Order) & Family==naordf[10,1] ~ naordf[10,2],
-  is.na(Order) & Family==naordf[11,1] ~ naordf[11,2],
-  is.na(Order) & Family==naordf[12,1] ~ naordf[12,2],
-  is.na(Order) & Family==naordf[13,1] ~ naordf[13,2],
   .default =  Order
   ),
-  Class=case_when(
-  is.na(Class) & !is.na(Order) ~ "Reptilia",
-  .default = Class
-  )
+  #Class=case_when(
+  #is.na(Class) & !is.na(Order) ~ "Reptilia",
+  #.default = Class
+  #)
 )
 
 tax_table(ps.nt.c) <- tax_table(as.matrix(newnttax))
@@ -121,11 +125,17 @@ newmartax <-  as.data.frame(as.matrix(tax_table(ps.mar.c))) %>% mutate(.,
                       Trophic.Round = round(as.numeric(Trophic.Base)),
                       .after = Trophic.Index
                       ) 
-naordfamlist <- newmartax %>% filter(is.na(Order) & !is.na(Family)) %>% .$Family %>% unique() %>% sort()
+naordfamlist <- newmartax %>% 
+  filter(is.na(Order) & !is.na(Family)) %>% 
+  .$Family %>% 
+  unique() %>% sort()
+naordfamlist
+# "Centropomidae" "Pomacanthidae" "Pomacentridae" "Sphyraenidae" 
+
 naordlist <- c("Carangiformes", #Centropomidae
                "Acanthuriformes", #Pomacanthidae
                "Blenniiformes", #Pomacentridae
-               "Acanthuriformes", #Sciaenidae
+               #"Acanthuriformes", #Sciaenidae
                "Carangiformes" #Sphyraenidae
                )
 
@@ -136,31 +146,76 @@ newmartax <- newmartax %>% mutate(Order=case_when(
   is.na(Order) & Family==naordfmar[2,1] ~ naordfmar[2,2],
   is.na(Order) & Family==naordfmar[3,1] ~ naordfmar[3,2],
   is.na(Order) & Family==naordfmar[4,1] ~ naordfmar[4,2],
-  is.na(Order) & Family==naordfmar[5,1] ~ naordfmar[5,2],
+  #is.na(Order) & Family==naordfmar[5,1] ~ naordfmar[5,2],
   .default =  Order
   ),
-  Class=case_when(
-    is.na(Class) & Order=="Testudines" ~ "Reptilia",
-    .default = Class
-  )
+  #Class=case_when(
+  #  is.na(Class) & Order=="Testudines" ~ "Reptilia",
+  #  .default = Class
+  #)
 )
 
 tax_table(ps.mar.c) <- tax_table(as.matrix(newmartax))
 ```
+```{r}
+newcombtax <-  as.data.frame(as.matrix(tax_table(ps.comb.c))) %>% mutate(.,
+                      Trophic.Base = word(Trophic.Index,sep=" ") %>% as.numeric(),
+                      Trophic.Round = round(as.numeric(Trophic.Base)),
+                      .after = Trophic.Index
+                      ) 
+naordfamlist <- newcombtax %>%
+  filter(is.na(Order) & !is.na(Family)) %>%
+  .$Family %>%
+  unique() %>% sort()
+naordfamlist
+#"Centropomidae" 
+
+naordlist <- c("Carangiformes" #Centropomidae
+               )
+
+naordfmar <- data.frame(fam=naordfamlist,ord=naordlist)
+
+newcombtax <- newcombtax %>% mutate(Order=case_when(
+  is.na(Order) & Family==naordfmar[1,1] ~ naordfmar[1,2],
+  .default =  Order
+  )
+)
+
+tax_table(ps.comb.c) <- tax_table(as.matrix(newcombtax))
+```
 
 ```{r}
-ps.nt <- ps.nt.c %>% subset_taxa(Class=="Actinopteri" | Class == "Chondrichthyes") %>% 
-  prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-ps.mar <- ps.mar.c %>% subset_taxa(Class=="Actinopteri" | Class == "Chondrichthyes") 
-ps.bold <- ps.bold.all %>% subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
-  subset_taxa(Phylum=="Chordata" & Class=="Actinopterygii" | Class == "Elasmobranchii") %>% 
-  prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
+ps.nt <- ps.nt.c %>% 
+  #subset_taxa(Class=="Actinopteri" | Class == "Chondrichthyes") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>% 
+  prune_samples(sample_sums(.)>0,.)
+
+ps.mar <- ps.mar.c %>% 
+  #subset_taxa(Class=="Actinopteri" | Class == "Chondrichthyes")  %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>% 
+  prune_samples(sample_sums(.)>0,.)
+
+ps.bold <- ps.bold.all %>% 
+  subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
+  subset_taxa(Phylum=="Chordata") %>% 
+  #subset_taxa(Phylum=="Chordata" & Class=="Actinopterygii" | Class == "Elasmobranchii") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>%
+  prune_samples(sample_sums(.)>0,.)
+
+ps.comb <- ps.comb.c %>% 
+  subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
+  subset_taxa(Phylum=="Chordata") %>% 
+  #subset_taxa(Phylum=="Chordata" & Class=="Actinopterygii" | Class == "Elasmobranchii" | Class=="Actinopterygii" ) %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>% 
+  prune_samples(sample_sums(.)>0,.)
 ```
 
 ```{r}
 ps.nt.melt <- psmelt(ps.nt %>% tax_glom("Species",NArm=FALSE))
 ps.mar.melt <- psmelt(ps.mar %>% tax_glom("Species",NArm=FALSE))
 ps.bold.melt <- psmelt(ps.bold %>% tax_glom("Species",NArm=FALSE))
+
+ps.comb.melt <- psmelt(ps.comb %>% tax_glom("Species",NArm=FALSE))
 ```
 
 Relative abundance  
@@ -168,265 +223,59 @@ Relative abundance
 ps.nt.rel <- ps.nt %>% transform_sample_counts(.,function(x) x/sum(x) ) 
 ps.mar.rel <- ps.mar %>% transform_sample_counts(.,function(x) x/sum(x) ) 
 ps.bold.rel <- ps.bold %>% transform_sample_counts(.,function(x) x/sum(x) ) 
+
+ps.comb.rel <- ps.comb %>% transform_sample_counts(.,function(x) x/sum(x) ) 
 ```
 
 ```{r}
 ps.nt.rel.melt <- psmelt(ps.nt.rel)
 ps.mar.rel.melt <- psmelt(ps.mar.rel)
 ps.bold.rel.melt <- psmelt(ps.bold.rel)
+
+ps.comb.rel.melt <- psmelt(ps.comb.rel)
 ```
 
 # Basic info  
+How many species are in each database?  
+This is Chordates (all chordates), so also including Aves, Ascidiacea, and Mammalia   
 ```{r}
-length(get_taxa_unique(ps.nt,"Species"))
-length(get_taxa_unique(ps.mar,"Species"))
-```
+length(get_taxa_unique(ps.nt,"Species")) #core nt db
+length(get_taxa_unique(ps.mar,"Species")) #mar masked db
+length(get_taxa_unique(ps.bold,"Species")) #bold db
 
-```{r}
-length(get_taxa_unique(ps.bold,"Species"))
-```
-
-# Test plots  
-```{r}
-ps.nt.melt %>%
-  filter(.,Abundance>0) %>%  group_by(.,Order) %>% 
-  reframe(.,Order=unique(Order), 
-            db="core nt",
-            Abund=sum(Abundance)) %>% 
-  mutate(RelAbund=Abund/sum(Abund)) %>%
-  ggplot(aes(x=db,y=RelAbund,fill=Order)) + 
-  geom_bar(stat="identity",position="stack") + theme(axis.title.x=element_blank(),legend.text = element_text(size=8))
-```
-
-```{r}
-ps.bold.melt %>%
-  filter(.,Abundance>0) %>%  group_by(.,Order) %>% 
-  reframe(.,Order=unique(Order), 
-          Class=unique(Class),
-            db="BOLDv5",
-            Abund=sum(Abundance)) %>% 
-  mutate(RelAbund=Abund/sum(Abund)) %>%
-  ggplot(aes(x=Class,y=Abund,fill=Order)) + 
-  geom_bar(stat="identity",position="stack") + theme(axis.title.x=element_blank(),legend.text = element_text(size=8)) + facet_wrap(~Class, scales="free_x")
-```
-
-```{r}
-ps.bold.melt %>%
-  filter(.,Abundance>0) %>%  group_by(.,Order) %>% 
-  reframe(.,Order=unique(Order), 
-          Class=unique(Class),
-            db="BOLDv5",
-            Abund=sum(Abundance)) %>% 
-  mutate(RelAbund=Abund/sum(Abund)) %>%
-    treemap::treemap(  # data
-            index="Order",
-            vColor="Order",
-            vSize="RelAbund",
-            type="index",
-
-            # Main
-            title="",
-            #palette="Dark2",
-
-            # Borders:
-            border.col=c("black"),
-            border.lwds=1,
-
-            #Labels
-            #fontsize.labels=5,
-            fontcolor.labels="black",
-            #fontface.labels=1,
-            bg.labels=c("transparent"),
-            align.labels=c("left", "top"),
-            overlap.labels=0.5,
-            inflate.labels=T                        # If true, labels are bigger when rectangle is bigger.
-            )
-```
-
-```{r}
-ps.nt.melt %>%
-  filter(.,Abundance>0) %>% 
-  group_by(Class) %>%
-  mutate(RelAbund=Abundance/sum(Abundance)) %>% 
-  #ggplot(aes(x=Class,y=Abundance,fill=Genus)) + 
-  ggplot(aes(x=Class,y=RelAbund,fill=Order)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  #theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-```
-
-```{r}
-ps.nt.melt %>%
-  filter(.,Abundance>0) %>% 
-  group_by(Class) %>%
-  mutate(RelAbund=Abundance/sum(Abundance)) %>% 
-  #ggplot(aes(x=Class,y=Abundance,fill=Genus)) + 
-  ggplot(aes(x=Class,y=RelAbund,fill=Family)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-```
-
-```{r}
-ps.nt.melt %>%
-  filter(.,Abundance>0) %>% 
-  group_by(Class) %>%
-  mutate(RelAbund=Abundance/sum(Abundance)) %>% 
-  #ggplot(aes(x=Class,y=Abundance,fill=Genus)) + 
-  ggplot(aes(x=Class,y=RelAbund,fill=Genus)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-```
-
-```{r}
-ps.nt.melt %>%
-  filter(.,Abundance>0) %>% 
-  group_by(Class) %>%
-  mutate(RelAbund=Abundance/sum(Abundance)) %>% 
-  #ggplot(aes(x=Class,y=Abundance,fill=Genus)) + 
-  ggplot(aes(x=Class,y=RelAbund,fill=Species)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-```
-
-```{r}
-ps.bold.melt %>%
-  filter(.,Abundance>0) %>% 
-  group_by(Class) %>%
-  mutate(RelAbund=Abundance/sum(Abundance)) %>% 
-  #ggplot(aes(x=Class,y=Abundance,fill=Genus)) + 
-  ggplot(aes(x=Class,y=RelAbund,fill=Species)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-```
-
-```{r}
-ps.nt.melt %>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Species)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-
-
-ps.bold.melt %>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Species)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-```
-
-```{r}
-length(get_taxa_unique(ps.bold,"Species"))
-
-length(get_taxa_unique(ps.mar,"Species"))
-length(get_taxa_unique(ps.nt,"Species"))
-```
-
-```{r}
-length(get_taxa_unique(ps.bold,"Genus"))
-
-length(get_taxa_unique(ps.mar,"Genus"))
-length(get_taxa_unique(ps.nt,"Genus"))
-
+length(get_taxa_unique(ps.comb,"Species")) #combined bold and core nt db
 ```
 
 Ok, so we know that the MAR dataset is the species we've definitively identified as being in the MAR.  
 This also means each one them was ID'd by some source, so the number of taxa should equal the number of non-NA  
 ```{r}
-ntaxa(ps.mar)
-is.na(as.data.frame(as.matrix(tax_table(ps.mar)))$`ID.Source`) %>% summary()
+# comparing the number of taxa in the MAR dataset 
+# to the number of taxa without a specified ID source  
 
-get_taxa_unique(ps.mar,"Species") %>% length()
-nrow(distinct(as.data.frame(as.matrix(tax_table(ps.mar)))))
+ntaxa(ps.mar) #total number of taxa 
+
+is.na( #number of taxa without an ID source  
+  as.data.frame(as.matrix(
+    tax_table(ps.mar)))$`ID.Source`) %>% 
+  summary() #false = ID source available (non-NA)
 ```
 
 Compare this to the nt dataset  
 ```{r}
 ntaxa(ps.nt)
-is.na(as.data.frame(as.matrix(tax_table(ps.nt)))$`ID.Source`) %>% summary()
-
-get_taxa_unique(ps.nt,"Species") %>% length()
-nrow(distinct(as.data.frame(as.matrix(tax_table(ps.nt)))))
-
-get_taxa_unique((ps.nt %>% subset_taxa(!is.na(`ID.Source`))),"Species") %>% length()
-nrow(distinct(as.data.frame(as.matrix(tax_table(ps.nt %>% subset_taxa(!is.na(`ID.Source`)))))))
-```
-So maybe what we can compare is the fish species we know are present and how many are identified at each level  
-
-```{r}
-ps.nt.sub <- ps.nt %>% subset_taxa(!is.na(`ID.Source`))
-```
-```{r}
-ps.nt.sub %>% psmelt() %>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Family)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-
-ps.nt.sub %>% psmelt() %>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Genus)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-
-ps.nt.sub %>% psmelt() %>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Species)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-```
-```{r}
-ps.mar.melt%>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Family)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-
-ps.mar.melt%>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Genus)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
-
-ps.mar.melt%>%
-  filter(.,Abundance>0) %>% 
-  ggplot(aes(x=Class,y=Abundance,fill=Species)) + 
-  theme(axis.title.x=element_blank(),legend.text = element_text(size=8))  + 
-  theme(legend.position = "none") + 
-  geom_bar(stat="identity",position="stack") 
+is.na(
+  as.data.frame(as.matrix(
+    tax_table(ps.nt)))$`ID.Source`) %>%
+  summary()
 ```
 
+and the combined dataset
 ```{r}
-ps.melt <- ps.nt.sub %>% tax_glom(.,"Species",NArm=FALSE) %>% psmelt()
-```
-```{r}
-ps.melt %>% filter(Abundance > 0) %>%
-  select(c(Class,Order,Family,Genus,Species)) %>% 
-  reframe(across(everything(),
-           ~ is.na(.))) %>% summary()
-```
-```{r}
-ps.mar.melt %>% filter(Abundance > 0) %>%
-  select(c(Class,Order,Family,Genus,Species)) %>% 
-  reframe(across(everything(),
-           ~ is.na(.))) %>% summary()
-```
-
-```{r}
-ps.bold.melt %>% filter(Abundance > 0) %>%
-  select(c(Class,Order,Family,Genus,Species)) %>% 
-  reframe(across(everything(),
-           ~ is.na(.))) %>% summary()
+ntaxa(ps.comb)
+is.na(
+  as.data.frame(as.matrix(
+    tax_table(ps.comb)))$`ID.Source`) %>% 
+  summary()
 ```
 
 ```{r}
@@ -434,8 +283,24 @@ ps.nt.melt %>% filter(Abundance > 0) %>%
   select(c(Class,Order,Family,Genus,Species)) %>% 
   reframe(across(everything(),
            ~ is.na(.))) %>% summary()
+
+ps.mar.melt %>% filter(Abundance > 0) %>%
+  select(c(Class,Order,Family,Genus,Species)) %>% 
+  reframe(across(everything(),
+           ~ is.na(.))) %>% summary()
+
+ps.bold.melt %>% filter(Abundance > 0) %>%
+  select(c(Class,Order,Family,Genus,Species)) %>% 
+  reframe(across(everything(),
+           ~ is.na(.))) %>% summary()
+
+ps.comb.melt %>% filter(Abundance > 0) %>%
+  select(c(Class,Order,Family,Genus,Species)) %>% 
+  reframe(across(everything(),
+           ~ is.na(.))) %>% summary()
 ```
 
+Compare assignments between the different types  
 ```{r}
 ps.bold.melt %>% select(-c(1:2,5:17)) %>% 
   group_by(Class,Order,Family,Genus,Species) %>% 
@@ -448,14 +313,6 @@ pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank")
   guides(fill=guide_legend(title="Assigned")) + 
   labs(x="Number of assigned taxa")+ scale_fill_brewer(palette="Dark2")
 
-#ps.bold.melt %>% select(-c(1:2,5:17)) %>% 
-#  group_by(Class,Order,Family,Genus,Species) %>% 
-#  reframe(Abundance=sum(Abundance)) %>% 
-#pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
-#  ggplot(aes(y=Rank,x=Abundance,fill=value)) + geom_bar(stat="identity",position="stack") + theme(legend.position="none")
-```
-
-```{r}
 ps.mar.melt %>% select(-c(1:2,5:17)) %>% 
   group_by(Class,Order,Family,Genus,Species) %>% 
   reframe(Abundance=sum(Abundance))  %>% 
@@ -466,10 +323,19 @@ pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank")
   ggplot(aes(y=Rank,x=value,fill=val)) + geom_bar(stat="identity",position="stack") + 
   guides(fill=guide_legend(title="Assigned")) + 
   labs(x="Number of assigned taxa")+ scale_fill_brewer(palette="Dark2")
-```
 
-```{r}
 ps.nt.melt %>% select(-c(1:2,5:17)) %>% 
+  group_by(Class,Order,Family,Genus,Species) %>% 
+  reframe(Abundance=sum(Abundance))  %>% 
+pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
+  group_by(Rank) %>% reframe("Assigned"=sum(!is.na(value)),
+                             "Not Assigned"=sum(is.na(value))) %>% #mutate(Rel=Abundance/sum(Abundance)) %>% 
+  pivot_longer(cols=c("Not Assigned","Assigned"),names_to="val") %>% mutate(Rank=factor(Rank,levels=c("Class","Order","Family","Genus","Species"))) %>%
+  ggplot(aes(y=Rank,x=value,fill=val)) + geom_bar(stat="identity",position="stack") + 
+  guides(fill=guide_legend(title="Assigned")) + 
+  labs(x="Number of assigned taxa") + scale_fill_brewer(palette="Dark2")
+
+ps.comb.melt %>% select(-c(1:2,5:17)) %>% 
   group_by(Class,Order,Family,Genus,Species) %>% 
   reframe(Abundance=sum(Abundance))  %>% 
 pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
@@ -483,25 +349,32 @@ pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank")
 
 # Comparison figure: fish and elasmobranchs  number of assigned MAR vs BOLD 
 ```{r}
-nassigned.mar.df <- ps.mar.melt %>% select(-c(1:2,5:17)) %>% 
+nassigned.mar.df <- ps.mar.melt %>% 
+  select(-c(1:2,5:17)) %>% 
   group_by(Family,Genus,Species) %>% 
-  #group_by(Class,Order,Family,Genus,Species) %>% 
   reframe(Abundance=sum(Abundance))  %>% 
 pivot_longer(cols=c("Family","Genus","Species"),names_to="Rank") %>% 
-  #pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
-  group_by(Rank) %>% reframe("Assigned"=sum(!is.na(value)),
-                             "Not Assigned"=sum(is.na(value))) %>% #mutate(Rel=Abundance/sum(Abundance)) %>% 
-  pivot_longer(cols=c("Not Assigned","Assigned"),names_to="val") %>% 
-  mutate(Rank=factor(Rank,levels=c("Species","Genus","Family"))) 
-  #mutate(Rank=factor(Rank,levels=c("Class","Order","Family","Genus","Species"))) 
+  group_by(Rank) %>% 
+  reframe("Assigned"=sum(!is.na(value)),
+          "Not Assigned"=sum(is.na(value))) %>% 
+  #mutate(Rel=Abundance/sum(Abundance)) %>% 
+  pivot_longer(cols=c("Not Assigned","Assigned"),
+               names_to="val") %>% 
+  mutate(Rank=factor(Rank,levels=c("Species","Genus","Family"))) %>% ungroup() %>%
+  arrange(Rank,desc(val)) %>% 
+  mutate(val=factor(val,levels=c("Assigned","Not Assigned")))
 ```
 ```{r,warning=FALSE}
 nassigned.mar.plot <- nassigned.mar.df %>%
-  ggplot(aes(y=Rank,x=value,fill=val)) + geom_bar(stat="identity",position="stack") + 
+  ggplot(aes(y=Rank,x=value,fill=val)) + 
+  geom_bar(stat="identity",position="stack") + 
   guides(fill=guide_legend(title="Assigned")) + 
-  labs(x="Number of assigned taxa", title="Number of fish taxa assigned to each rank using a masked GenBank database") + 
+  labs(x="Number of assigned taxa", 
+       title="Number of fish taxa assigned to each rank using a masked GenBank database") + 
   scale_fill_brewer(palette="Dark2") + 
-  geom_label(aes(label=(ifelse(value>0 & value<275,value,NA))),hjust=2.5) + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,
+                               value,NA))),
+             hjust=2.5) + 
   #scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + 
   theme(legend.position="right")
 
@@ -511,15 +384,16 @@ nassigned.mar.plot
 ```{r}
 nassigned.bold.df <- ps.bold.melt %>% select(-c(1:2,5:17)) %>% 
   group_by(Family,Genus,Species) %>% 
-  #group_by(Class,Order,Family,Genus,Species) %>% 
   reframe(Abundance=sum(Abundance))  %>% 
-pivot_longer(cols=c("Family","Genus","Species"),names_to="Rank") %>% 
-  #pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
-  group_by(Rank) %>% reframe("Assigned"=sum(!is.na(value)),
-                             "Not Assigned"=sum(is.na(value))) %>% #mutate(Rel=Abundance/sum(Abundance)) %>% 
-  pivot_longer(cols=c("Not Assigned","Assigned"),names_to="val") %>% 
-  mutate(Rank=factor(Rank,levels=c("Species","Genus","Family"))) 
-  #mutate(Rank=factor(Rank,levels=c("Class","Order","Family","Genus","Species"))) 
+pivot_longer(cols=c("Family","Genus","Species"),
+             names_to="Rank") %>% 
+  group_by(Rank) %>% 
+  reframe("Assigned"=sum(!is.na(value)),
+          "Not Assigned"=sum(is.na(value))) %>% 
+  pivot_longer(cols=c("Not Assigned","Assigned"),
+               names_to="val") %>% 
+  mutate(Rank=factor(Rank,
+                     levels=c("Species","Genus","Family"))) 
 ```
 ```{r,warning=FALSE}
 nassigned.bold.plot <- nassigned.bold.df %>%
@@ -527,74 +401,120 @@ nassigned.bold.plot <- nassigned.bold.df %>%
   guides(fill=guide_legend(title="Assigned")) + 
   labs(x="Number of assigned taxa", title="Number of fish taxa assigned to each rank using BOLD v5") + 
   scale_fill_brewer(palette="Dark2") + 
-  geom_label(aes(label=value),hjust=1) + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,
+                               value,NA))),
+             hjust=2) + 
   #scale_x_continuous(expand = c(0,NA),limits=c(0,100)) +
   theme(legend.position="none")
 
 nassigned.bold.plot
 ```
+
 ```{r}
-ps.bold.melt %>% select(-c(1:17)) %>% distinct() %>%
-  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>%
-  mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
-                             !is.na(value) ~ "Assigned"),
-         Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class"))) %>% 
-  ggplot(aes(y=Rank,fill=isassgn)) + geom_bar(stat="count") + theme(legend.position="none")
+nassigned.comb.df <- ps.comb.melt %>% select(-c(1:2,5:17)) %>% 
+  group_by(Family,Genus,Species) %>% 
+  reframe(Abundance=sum(Abundance))  %>% 
+pivot_longer(cols=c("Family","Genus","Species"),
+             names_to="Rank") %>% 
+  group_by(Rank) %>% 
+  reframe("Assigned"=sum(!is.na(value)),
+          "Not Assigned"=sum(is.na(value))) %>% 
+  pivot_longer(cols=c("Not Assigned","Assigned"),
+               names_to="val") %>% 
+  mutate(Rank=factor(Rank,
+                     levels=c("Species","Genus","Family"))) 
+```
+```{r,warning=FALSE}
+nassigned.comb.plot <- nassigned.comb.df %>%
+  ggplot(aes(y=Rank,x=value,fill=val)) + geom_bar(stat="identity",position="stack") + 
+  guides(fill=guide_legend(title="Assigned")) + 
+  labs(x="Number of assigned taxa", title="Number of fish taxa assigned to each rank using agreements between BOLD and NCBI") + 
+  scale_fill_brewer(palette="Dark2") + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,
+                               value,NA))),
+             hjust=2) + 
+  #scale_x_continuous(expand = c(0,NA),limits=c(0,100)) +
+  theme(legend.position="none")
+
+nassigned.comb.plot
 ```
 
 ```{r}
-patchwork::wrap_plots((nassigned.mar.plot+theme(axis.title.x = element_blank())),nassigned.bold.plot,nrow=2)
+patchwork::wrap_plots(
+  (nassigned.mar.plot + 
+     scale_x_continuous(limits=c(0,275))
+   ),
+  (nassigned.comb.plot + 
+     scale_x_continuous(limits=c(0,275))
+   ),
+  (nassigned.bold.plot + 
+     scale_x_continuous(limits=c(0,275))
+   ),
+  nrow=3)
 #ggsave("/Users/lauragivens/Downloads/taxcoverage.family.png",width=10,height=5)
 ```
 
 # Comparison figure: All in phylum  
 ```{r}
-nassigned.nt.df <- ps.nt.c %>% 
-  tax_glom("Species",NArm=FALSE) %>% 
-  psmelt() %>% select(-c(1:2,5:16)) %>% 
+nassigned.nt.df <-   ps.nt.melt %>% 
+  select(-c(1:2,5:16)) %>% 
   group_by(Phylum,Class,Order,Family,Genus,Species) %>% 
-  #group_by(Class,Order,Family,Genus,Species) %>% 
   reframe(Abundance=sum(Abundance))  %>% 
-pivot_longer(cols=c("Phylum","Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
-  group_by(Rank) %>% reframe("Assigned"=sum(!is.na(value)),
-                             "Not Assigned"=sum(is.na(value))) %>% #mutate(Rel=Abundance/sum(Abundance)) %>% 
-  pivot_longer(cols=c("Not Assigned","Assigned"),names_to="val") %>% 
-  mutate(Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class","Phylum"))) 
+pivot_longer(cols=c("Phylum","Class","Order","Family","Genus","Species"),
+             names_to="Rank") %>% 
+  group_by(Rank) %>% 
+  reframe("Assigned"=sum(!is.na(value)),
+          "Not Assigned"=sum(is.na(value))
+          )  %>%
+  pivot_longer(cols=c("Not Assigned","Assigned"),
+               names_to="val") %>% 
+  group_by(Rank) %>% mutate(pos=case_when(val=="Not Assigned" ~ value+1, .default=sum(value))) %>% ungroup() %>%
+  mutate(Rank=factor(Rank,
+                     levels=c("Species","Genus","Family","Order","Class","Phylum"))) 
 ```
 ```{r}
 nassigned.phy.nt.plot <- nassigned.nt.df %>%
-  ggplot(aes(y=Rank,x=value,fill=val)) + geom_bar(stat="identity",position="stack") + 
+  ggplot(aes(y=Rank,x=value,fill=val)) + 
+  geom_bar(stat="identity",position="stack") + 
   guides(fill=guide_legend(title="Assigned")) + 
-  labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using GenBank") + 
+  labs(x="Number of assigned taxa", 
+       title="Number of chordate taxa assigned to each rank using GenBank") + 
   scale_fill_brewer(palette="Dark2") + 
-  geom_label(aes(label=value),hjust=0) + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,
+                               value,NA)),
+                 x=pos
+                 ),
+             hjust=1) + 
   #scale_x_continuous(expand = c(0,NA),limits=c(0,150)) + 
   theme(legend.position="none")
 nassigned.phy.nt.plot
 ```
 
 ```{r}
-nassigned.boldall.df <- ps.bold.all %>%
-  subset_samples(Rookery!="Practice" & Rookery !="Blank") %>% 
-  subset_taxa(Phylum=="Chordata") %>% 
-  tax_glom("Species",NArm=FALSE) %>% 
-  psmelt() %>% select(-c(1:2,5:17)) %>% 
+nassigned.boldall.df <- ps.bold.melt %>% select(-c(1:2,5:17)) %>% 
   group_by(Phylum,Class,Order,Family,Genus,Species) %>% 
-  #group_by(Class,Order,Family,Genus,Species) %>% 
   reframe(Abundance=sum(Abundance))  %>% 
-pivot_longer(cols=c("Phylum","Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
+pivot_longer(cols=c("Phylum","Class","Order","Family","Genus","Species"),
+             names_to="Rank") %>% 
   group_by(Rank) %>% reframe("Assigned"=sum(!is.na(value)),
-                             "Not Assigned"=sum(is.na(value))) %>% #mutate(Rel=Abundance/sum(Abundance)) %>% 
+                             "Not Assigned"=sum(is.na(value))) %>% 
   pivot_longer(cols=c("Not Assigned","Assigned"),names_to="val") %>% 
+  group_by(Rank) %>% mutate(pos=case_when(val=="Not Assigned" ~ value+1, .default=sum(value))) %>% ungroup() %>%
   mutate(Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class","Phylum"))) 
 ```
 ```{r}
 nassigned.phy.bold.plot <- nassigned.boldall.df %>%
-  ggplot(aes(y=Rank,x=value,fill=val)) + geom_bar(stat="identity",position="stack") + 
+  ggplot(aes(y=Rank,x=value,fill=val)) + 
+  geom_bar(stat="identity",position="stack") + 
   guides(fill=guide_legend(title="Assigned")) + 
-  labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using BOLD v5") + 
+  labs(x="Number of assigned taxa", 
+       title="Number of chordate taxa assigned to each rank using BOLD v5") + 
   scale_fill_brewer(palette="Dark2") + 
-  geom_label(aes(label=value),hjust=1) + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,
+                               value,NA)),
+                 x=pos
+                 ),
+             hjust=1) + 
   #scale_x_continuous(expand = c(0,NA),limits=c(0,200)) + 
   theme(legend.position="none")
 
@@ -602,16 +522,14 @@ nassigned.phy.bold.plot
 ```
 
 ```{r}
-nassigned.marall.df <- ps.mar.c %>% 
-  tax_glom("Species",NArm=FALSE) %>% 
-  psmelt() %>% select(-c(1:2,5:16)) %>% 
+nassigned.marall.df <- ps.mar.melt %>% select(-c(1:2,5:16)) %>% 
   group_by(Phylum,Class,Order,Family,Genus,Species) %>% 
-  #group_by(Class,Order,Family,Genus,Species) %>% 
   reframe(Abundance=sum(Abundance))  %>% 
 pivot_longer(cols=c("Phylum","Class","Order","Family","Genus","Species"),names_to="Rank") %>% 
   group_by(Rank) %>% reframe("Assigned"=sum(!is.na(value)),
-                             "Not Assigned"=sum(is.na(value))) %>% #mutate(Rel=Abundance/sum(Abundance)) %>% 
+                             "Not Assigned"=sum(is.na(value))) %>% 
   pivot_longer(cols=c("Not Assigned","Assigned"),names_to="val") %>% 
+  group_by(Rank) %>% mutate(pos=case_when(val=="Not Assigned" ~ value+1, .default=sum(value))) %>% ungroup() %>%
   mutate(Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class","Phylum"))) 
 ```
 ```{r}
@@ -620,7 +538,11 @@ nassigned.phy.mar.plot <- nassigned.marall.df %>%
   guides(fill=guide_legend(title="Assigned")) + 
   labs(x="Number of assigned taxa", title="Number of chordate taxa assigned to each rank using a masked GenBank database") + 
   scale_fill_brewer(palette="Dark2") + 
-  geom_label(aes(label=value),hjust=1) + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,
+                               value,NA)),
+                 x=pos
+                 ),
+             hjust=1) + 
   #scale_x_continuous(expand = c(0,NA),limits=c(0,100)) + 
   theme(legend.position="right")
 
@@ -634,54 +556,15 @@ patchwork::wrap_plots(
   (nassigned.phy.mar.plot+theme(axis.title.x = element_blank())),
   (nassigned.phy.bold.plot+theme(legend.position="none")),
   nrow=3) + plot_layout(design="
-                        AAAAA
+                        CCCCC
+                        AAAA#
                         BBB##
-                        CCC##
                         ")
 #ggsave("/Users/lauragivens/Downloads/taxcoverage.phy.png",width=12,height=8)
 ```
 
 # Trophic Level  
 Violin plot
-```{r,eval=FALSE,warning=FALSE}
-ps.nt.rel.melt %>% 
-  mutate(Trophic.Rounded = as.numeric(Trophic.Rounded),
-         Month=factor(Month,levels=c("August","November","February","May"))) %>% 
-  filter(Abundance>0) %>%
-ggplot(.,
-       aes(x=Month,
-           y=Trophic.Rounded,
-           fill=Site)) + 
-  facet_wrap(~Site,nrow=3) + 
-  geom_violin() + 
-  #geom_jitter(shape=16, position=position_jitter(0.2)) + 
-  geom_boxplot(width=0.15) +
- scale_color_viridis_d(begin=0.3,end=0.9,option='plasma') + scale_fill_viridis_d(begin=0.3,end=0.9,option='plasma') +
-  labs(title="Species' trophic index at rookery and non-rookery mangrove cayes",
-       caption="taxa assigned using MAR fish species BLAST alias",
-       y="Trophic Index")
-#ggsave("Images/violin.relabund.trophic.mar.png",width=10,height=7)
-```
-```{r,eval=FALSE,warning=FALSE}
-ps.mar.rel.melt %>% 
-  mutate(Trophic.Base = as.numeric(Trophic.Base),
-         Month=factor(Month,levels=c("August","November","February","May"))) %>% 
-  filter(Abundance>0) %>%
-ggplot(.,
-       aes(x=Month,
-           y=Trophic.Base,
-           fill=Site)) + 
-  facet_wrap(~Site,nrow=3) + 
-  geom_violin() + 
-  #geom_jitter(shape=16, position=position_jitter(0.2)) + 
-  geom_boxplot(width=0.15) +
- scale_color_viridis_d(begin=0.3,end=0.9,option='plasma') + scale_fill_viridis_d(begin=0.3,end=0.9,option='plasma') +
-  labs(title="Species' trophic index at rookery and non-rookery mangrove cayes",
-       caption="taxa assigned using MAR fish species BLAST alias",
-       y="Trophic Index")
-#ggsave("Images/violin.relabund.trophic.mar.png",width=10,height=7)
-```
-
 ```{r,warning=FALSE}
 #ps.nt %>% psmelt() %>% 
 #ps.nt.all  %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")  %>% psmelt() %>% 
@@ -740,250 +623,165 @@ patchwork::wrap_plots(
 #ggsave("/Users/lauragivens/Downloads/violin.nt.comp.png",width=12,height=8)
 ```
 
-# Check accuracy  
-So we can probably assume some of the nt assignments are incorrect  
+# Check accuracy   
 ```{r}
-#shared species assignments between nt and MAR masked  
-unique(newnttax$Species)[unique(newnttax$Species)%in%unique(newmartax$Species)] %>% length()
+library(rfishbase)
 ```
-Make a new dataframe for nt taxa that only include fish and elasmo  
-```{r}
-newnttaxclass <- as.data.frame(as.matrix(tax_table(ps.nt)))
-newboldtaxclass <- as.data.frame(as.matrix(tax_table(ps.bold)))
-```
-How many species does that bring us down to?  
-```{r}
-#number of species in original df  
-length(unique(newnttax$Species))
-
-#number of fish and elasmo species  
-length(unique(newnttaxclass$Species))
-length(unique(newboldtaxclass$Species))
-```
-
-Get a list of species that are NOT in the MAR masked alias  
-```{r}
-ntsp <- unique(newnttaxclass$Species)[!unique(newnttaxclass$Species)%in%unique(newmartax$Species)] #subsetting the taxa df we just made to keep only those NOT in the MAR alias dataset  
-boldsp <- unique(newboldtaxclass$Species)[!unique(newboldtaxclass$Species)%in%unique(newmartax$Species)]  
-
-#for later: get the list of species that were in the mar dataset  
-marsp <- unique(newnttaxclass$Species)[unique(newnttaxclass$Species)%in%unique(newmartax$Species)]
-marspbd <- unique(newboldtaxclass$Species)[unique(newboldtaxclass$Species)%in%unique(newmartax$Species)]
-
-# check math 
-length(unique(newnttaxclass$Species))
-sum(length(marsp),length(ntsp)) #should equal the number of unique species above
-
-length(unique(newboldtaxclass$Species))
-sum(length(marspbd),length(boldsp)) #should equal the number of unique species above
-
-#how many species are we left with  
-length(ntsp)
-length(boldsp)
-```
-That's still too many to check manually.  
-
-How many species from the nt dataset are NOT in the mar nt dataset and do not share a genus with the mar dataset  
-```{r}
-ntgen <- newnttaxclass[newnttaxclass$Species%in%ntsp,] %>%  #subset taxa df to keep Species unique to the nt dataset  
-  filter(!Genus%in%unique(newmartax$Genus)) %>% #remove genera that are in the mar dataset  
-  .$Genus %>% unique() %>% sort()
-
-length(ntgen)
-```
-```{r}
-boldgen <- newboldtaxclass[newboldtaxclass$Species%in%boldsp,] %>%  #subset taxa df to keep Species unique to the bold dataset  
-  filter(!Genus%in%unique(newmartax$Genus)) %>% #remove genera that are in the mar dataset  
-  .$Genus %>% unique() %>% sort()
-
-length(boldgen)
-```
-
-```{r}
-spp <- newnttaxclass[newnttaxclass$Species%in%ntsp,] %>% #subset taxa df to keep Species unique to the nt dataset  
-  filter(Genus%in%ntgen) %>% #keep only genera that were not in the mar dataset
-  distinct() %>% 
-  filter(is.na(`ID.Source`)) %>% #remove any that have an ID.Source, because that means we knew the species was in the mar but it just didn't show up in the masked dataset  
-  .$Species %>% unique()
-
-sppbd <- newboldtaxclass[newboldtaxclass$Species%in%boldsp,] %>% #subset taxa df to keep Species unique to the bold dataset  
-  filter(Genus%in%boldgen) %>% #keep only genera that were not in the mar dataset
-  distinct() %>% 
-  .$Species %>% unique()
-
-
-#for later: get the list of species that were in the mar dataset  
-sppg <- newnttaxclass[newnttaxclass$Species%in%ntsp,] %>% #subset taxa df to keep Species unique to the nt dataset 
-  filter(.,!Genus%in%ntgen) %>% #keep genera that are in the mar dataset  
-  .$Species %>% unique()
-
-#for later: get the list of species that were in the mar dataset  
-sppgbd <- newboldtaxclass[newboldtaxclass$Species%in%boldsp,] %>% #subset taxa df to keep Species unique to the bold dataset 
-  filter(.,!Genus%in%boldgen) %>% #keep genera that are in the mar dataset  
-  .$Species %>% unique()
-
-#add to marsp list  
-marspp <- c(marsp,sppg)
-marsppbd <- c(marspbd,sppgbd)
-
-#check addition  
-length(sppg)
-length(marsp)
-sum(length(sppg),length(marsp))
-length(marspp)
-
-sum(length(marspp),length(spp))
-
-sum(length(marsppbd),length(sppbd))
-```
-
-```{r}
-#remotes::install_github("ropensci/rfishbase")
-library("rfishbase")
-```
-```{r}
-fshbsecountrydf <- rfishbase::country(
-  species_list = spp,
-  #fields = NULL,
-  server = c("fishbase", "sealifebase"),
-  version = "latest"
-  #db = NULL,
-)
-
-fshbsecountrydfbd <- rfishbase::country(
-  species_list = sppbd,
-  #fields = NULL,
-  server = c("fishbase", "sealifebase"),
-  version = "latest"
-  #db = NULL,
-)
-```
-
-How many species were kept?  
-```{r}
-length(fshbsecountrydf$Species %>% unique())
-length(spp)
-
-
-length(fshbsecountrydfbd$Species %>% unique())
-length(sppbd)
-#so some were not found in fishbase  
-```
-```{r}
-#get list of species not found in fishbase  
-ntfshbse <- spp[!spp%in%unique(fshbsecountrydf$Species)]
-bdfshbse <- sppbd[!sppbd%in%unique(fshbsecountrydfbd$Species)]
-
-#check math  
-sum(length(ntfshbse),length(unique(fshbsecountrydf$Species)))
-length(spp)
-
-sum(length(bdfshbse),length(unique(fshbsecountrydfbd$Species)))
-length(sppbd)
-
-```
-
-What countries are in the dataset?  
-```{r}
-#fshbsecountrydf$country %>% unique() 
-```
-
-Species known to be in the MAR  
-```{r}
-#df of species in the MAR  
-#fshbsecountrydf[fshbsecountrydf$country %in% c("Belize","Mexico","Guatemala","Honduras"),] 
-
-#list of species found in MAR  
-fshsppmar <- fshbsecountrydf[fshbsecountrydf$country %in% c("Belize","Mexico","Guatemala","Honduras"),] %>% .$Species %>% unique()
-fshsppmarbd <- fshbsecountrydfbd[fshbsecountrydfbd$country %in% c("Belize","Mexico","Guatemala","Honduras"),] %>% .$Species %>% unique()
-
-fshsppmar
-fshsppmarbd
-
-#df of fish not found in MAR countries  
-fshsppmardf <- fshbsecountrydf %>% filter(!Species%in%fshsppmar)
-fshsppmarbddf <- fshbsecountrydfbd %>% filter(!Species%in%fshsppmarbd)
-
-length(fshsppmar)
-length(fshsppmardf %>% filter(!Species %in% fshsppmar) %>% .$Species %>% unique())
-```
-Species known to be in Caribbean  
 ```{r}
 #list of caribbean countries
-carcountries <- c("Bel","Mex","Guat","Hond","Baha","Jamai","Arub","Virgin","Cayman","Antil","Antig","Costa","Cuba","Dominic","Barbad","Venez","Nicar","Puert","Guya","Hait","Trini","Surin","United States","Colom","Panam","Grena","Lucia","Vincent","US","Braz","Bras","Cura","Kitts")
+carcountries <- c(#"Bel","Mex","Guat","Hond",
+                  "Baha","Jamai","Arub","Virgin","Cayman","Antil","Antig","Costa","Cuba","Dominic","Barbad","Venez","Nicar","Puert","Guya","Hait","Trini","Surin","United States","Colom","Panam","Grena","Lucia","Vincent","US","Braz","Bras","Cura","Kitts")
+```
 
-#list of non-caribbean countries  
-#noncarcountries <- fshsppdf$country[!str_detect(fshsppdf$country,paste(carcountries,collapse="|"))] %>% unique() %>% sort()
+We want to know:   
+1. how many taxa are there  
+2. how many are actually known to be in the MAR  
+3. how many are potentially in the MAR  
+4. how many are wrong?   
+
+So to do that, we can first use the MAR masked database to check what species are in common. Any species shared with the MAR dataset are likely to be correct or at least actually known to be present in the region 
+
+Make a new dataframe that only include fish and elasmo  
+```{r fishelasmodf}
+newnttaxclass <- as.data.frame(as.matrix(
+  tax_table(ps.nt %>%
+              subset_taxa(Class!="Aves" & Class != "Ascidiacea" & Class != "Mammalia") 
+            )))
+
+newbdtaxclass <- as.data.frame(as.matrix(
+  tax_table(ps.bold %>% 
+              subset_taxa(Class!="Aves" & Class != "Ascidiacea" & Class != "Reptilia" & Class != "Mammalia"))
+  ))
+
+newcbtaxclass <- as.data.frame(as.matrix(
+  tax_table(ps.comb %>% 
+              subset_taxa(Class!="Aves" & Class != "Ascidiacea" & Class != "Reptilia" & Class != "Amphibia" & Class != "Mammalia" & !is.na(Class)) 
+            )))
+```
+
+### NCBI database   
+Using the new dataframe of only fish and elasmo species,  
+Get a list of species that are NOT in the MAR masked alias    
+
+ntsp: by subsetting the taxa df we just made to keep only those NOT in the MAR alias dataset   
+ntmarsp: Then get the list of species that ARE in the MAR dataset  
+
+After querying fishbase using the ntsp list, we will subdivide the species into fish:  
+1. known to occur in the MAR (ntmarsp + ntfshbse_mar)  
+2. fish from the Caribbean (ntfshbse_car)  
+3. fish that are not known to be in the region/found outside the region (ntfshbse_out)  
+4. fish that were not found in the databse (ntfshbse_notfound)
+
+```{r}
+ntsp <- unique(newnttaxclass$Species)[!unique(newnttaxclass$Species)%in%unique(newmartax$Species)] #species not in mar db
+ntmarsp <- unique(newnttaxclass$Species)[unique(newnttaxclass$Species)%in%unique(newmartax$Species)] #species in mar db
+```
+
+check that those numbers add up    
+```{r}
+#nt
+length(unique(newnttaxclass$Species)) #total = 
+length(ntsp) # taxa not in database +
+length(ntmarsp) # taxa in database
+# +- 1 for NA 
+```
+
+Query fishbase  
+Use list of species not in the MAR masked alias database (ntsp)  
+```{r}
+fshbsecountrydf <- rfishbase::country(
+  species_list = ntsp,#spp,
+  #fields = NULL,
+  server = c("fishbase", "sealifebase"),
+  version = "latest"
+  #db = NULL,
+)
+```
+
+Get lists of species from fishbase output  
+ntfshbse_notfound: species not found in fishbase  
+ntfshbse_mar: species found in the MAR  
+ntfshbse_car: species not found in the MAR but found in the Caribbean  
+ntfshbse_out: species not recorded in the Caribbean 
+```{r}
+#list of species not found in fishbase  
+ntfshbse_notfound <- ntsp[!ntsp%in%unique(fshbsecountrydf$Species)]
+
+#list of species found in MAR  
+ntfshbse_mar <- fshbsecountrydf[fshbsecountrydf$country %in% c("Belize","Mexico","Guatemala","Honduras"),] %>%
+  .$Species %>% 
+  unique()
 
 #list of species found in caribbean countries 
-fshspp <- fshbsecountrydf[str_detect(fshbsecountrydf$country,paste(carcountries,collapse="|")),] %>% .$Species %>% unique() 
-fshsppbd <- fshbsecountrydfbd[str_detect(fshbsecountrydfbd$country,paste(carcountries,collapse="|")),] %>% .$Species %>% unique() 
+ntfshbse_car <- fshbsecountrydf[str_detect(fshbsecountrydf$country,
+                                     paste(carcountries,collapse="|")),] %>% 
+  filter(!Species%in%ntfshbse_mar) %>% #dont include species already identified as being in a MAR country
+  .$Species %>% 
+  unique() 
 
-fshspp 
-fshsppbd
+#Species not recorded in the Caribbean  
+ntfshbse_out <- fshbsecountrydf %>% 
+  filter(!Species%in%ntfshbse_mar) %>% #don't include species found in MAR countries
+  filter(!Species%in%ntfshbse_car) %>% #don't include species found in caribbean countries 
+  .$Species %>% 
+  unique() %>%
+  sort()
+```
+
+Confirm numbers add up  
+```{r}
+#total num species
+length(unique(newnttaxclass$Species))
+sum(length(ntmarsp),length(ntsp)) #sum of species found in MAR db and those not found in MAR db  
+
+#num species queried to fishbase  
+length(ntsp) #ntsp was used to query fishbase  
+sum(length(ntfshbse_notfound), #species not found in fishbase  
+    length(ntfshbse_mar), #species found in MAR
+    length(ntfshbse_car), #species found in Caribbean
+    length(ntfshbse_out) #species found outside of Caribbean  
+    )
+
+#total num species 
+length(unique(newnttaxclass$Species))
+sum(length(ntmarsp), #species found in MAR database
+    length(ntfshbse_notfound), #species not found in fishbase  
+    length(ntfshbse_mar), #species found in MAR
+    length(ntfshbse_car), #species found in Caribbean
+    length(ntfshbse_out) #species found outside of Caribbean  
+    )
 ```
 ```{r}
-#df of fish not found in caribbean countries  
-fshsppdf <- fshbsecountrydf %>% filter(!Species%in%fshspp)
-fshsppbddf <- fshbsecountrydfbd %>% filter(!Species%in%fshsppbd)
-```
-Species not recorded in the Caribbean  
-```{r}
-noncarfsh <- fshsppdf$Species %>% unique() %>% sort()
-noncarfshbd <- fshsppbddf$Species %>% unique() %>% sort()
-
-fshsppdf$Species %>% unique() %>% sort()
+ntmarsp <-  ntmarsp[!is.na(ntmarsp)] #species found in MAR database
+ntfshbse_notfound <- ntfshbse_notfound[!is.na(ntfshbse_notfound)] #species not found in fishbase  
+ntfshbse_mar <- ntfshbse_mar[!is.na(ntfshbse_mar)] #species found in MAR
+ntfshbse_car <- ntfshbse_car[!is.na(ntfshbse_car)] #species found in Caribbean
+ntfshbse_out <- ntfshbse_out[!is.na(ntfshbse_out)] #species found outside of Caribbean  
 ```
 
-Check numbers  
-```{r}
-noncarfsh <- noncarfsh[!is.na(noncarfsh)]
-fshspp <- fshspp[!is.na(fshspp)]
-marspp <- marspp[!is.na(marspp)]
-ntfshbse <- ntfshbse[!is.na(ntfshbse)]
-
-length(noncarfsh) # number of fish not found in caribbean
-length(fshspp) # number of fish found in caribbean but not mar
-length(marspp) # number of fish found in mar  
-length(ntfshbse) # number of fish not found in fishbase
-
-sum(length(noncarfsh),length(fshspp),length(marspp),length(ntfshbse))
-length(get_taxa_unique(ps.nt,"Species"))
-```
-
-Check numbers  
-```{r}
-noncarfshbd <- noncarfshbd[!is.na(noncarfshbd)]
-fshsppbd <- fshsppbd[!is.na(fshsppbd)]
-marsppbd <- marsppbd[!is.na(marsppbd)]
-bdfshbse <- bdfshbse[!is.na(bdfshbse)]
-
-length(noncarfshbd) # number of fish not found in caribbean
-length(fshsppbd) # number of fish found in caribbean but not mar
-length(marsppbd) # number of fish found in mar  
-length(bdfshbse) # number of fish not found in fishbase
-
-sum(length(noncarfshbd),length(fshsppbd),length(marsppbd),length(bdfshbse))
-length(get_taxa_unique(ps.bold,"Species"))
-```
-### nt plot  
 ```{r}
 accuracy.nt <- ps.nt.melt %>% 
-  mutate(FalseAssgn = case_when(Species%in%noncarfsh ~ "Geographically Unlikely", 
-                             Species%in%fshspp ~ "Known in Caribbean",
-                             Species%in%marspp ~ "Known in MAR",
-                             Species%in%ntfshbse ~ "Not in Fishbase",
-                             #Genus%in%ntgen & is.na(Species) ~ "Not Defined",
-                             is.na(Species) ~ NA
+  filter(Class=="Actinopteri" | Class=="Chondrichthyes") %>%
+  mutate(FalseAssgn = case_when(Species%in%ntmarsp ~ "Known in MAR",
+                                Species%in%ntfshbse_mar ~ "Known in MAR",
+                                Species%in%ntfshbse_car ~ "Known in Caribbean",
+                                Species%in%ntfshbse_out ~ "Geographically Unlikely", 
+                             Species%in%ntfshbse_notfound ~ "Not in Fishbase",
+                             is.na(Species) ~ NA,
+                             .default="Not a fish species"
                              ),.after=Species)
 ```
 ```{r}
-accuracy.plot.df <- accuracy.nt %>% select(-c(1:17)) %>% distinct() %>% #get a unique dataframe; should have one row for each species, one for each genus, etc  
+accuracy.nt.plot.df <- accuracy.nt %>% 
+  select(-c(1:17)) %>% 
+  distinct() %>% #get a unique dataframe; should have one row for each species, one for each genus, etc  
   mutate(rows=nrow(.)) %>%
-  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>%
+  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),
+               names_to="Rank") %>%
   mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
                              !is.na(value) ~ "Assigned"),
-         Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class"))
+         Rank=factor(Rank,
+                     levels=c("Species","Genus","Family","Order","Class"))
          ) %>% 
   group_by(Rank) %>% 
   mutate(NotAssgn=sum(isassgn=="Not Assigned"),
@@ -991,7 +789,8 @@ accuracy.plot.df <- accuracy.nt %>% select(-c(1:17)) %>% distinct() %>% #get a u
          FalseAssgn=case_when(Rank=="Species" ~ FalseAssgn, 
                               #remove false assignments from everything other than species  
                               .default=NA)
-         ) %>% distinct() %>% #collapse down to unique rows
+         ) %>% 
+  distinct() %>% #collapse down to unique rows
   group_by(Rank,isassgn,FalseAssgn) %>% 
   reframe(rows=rows, #size of df
           NotAssgn=NotAssgn, #how many individuals in each group are not assigned
@@ -999,140 +798,154 @@ accuracy.plot.df <- accuracy.nt %>% select(-c(1:17)) %>% distinct() %>% #get a u
           uniqranks=uniqgroups,# number of unique members of that rank
           isassgn=isassgn,
           FalseAssgn=FalseAssgn) %>% 
-  distinct() %>% group_by(Rank)  %>% arrange(desc(isassgn),.by_group = TRUE) %>%
+  distinct() %>% 
+  group_by(Rank) %>% 
+  arrange(desc(isassgn),
+          .by_group = TRUE) %>%
   mutate(FinalNum=case_when(isassgn=="Not Assigned" & is.na(FalseAssgn) ~ NotAssgn,
-                            isassgn=="Assigned" & is.na(FalseAssgn) ~ rows-NotAssgn,
+                            #isassgn=="Assigned" & is.na(FalseAssgn) ~ rows-NotAssgn,
+                            isassgn=="Assigned" & is.na(FalseAssgn) ~ uniqranks-NotAssgn,
                             #isassgn=="Not Assigned" & is.na(FalseAssgn) ~ (rows-sum(numuniqassgn)+1),
                             #uniqranks==numuniqassgn ~ rows,
                             .default=numuniqassgn),
         FalseAssgn=factor(FalseAssgn,
-                     levels=c(NA,"Not in Fishbase","Geographically Unlikely",
+                     levels=c("Not a fish species",
+                              "Not in Fishbase",
+                              "Geographically Unlikely",
                               "Known in Caribbean","Known in MAR"),ordered=TRUE)
-         ) %>% ungroup() %>% group_by(Rank)  %>% arrange(desc(FalseAssgn),.by_group = TRUE) %>% arrange(desc(isassgn),.by_group = TRUE) %>% mutate(,
-         LabelNum=( cumsum(FinalNum)))
-
-accuracy.plot.df
-```
-```{r}
-plotpatt <- c("stripe","crosshatch","circle",NA)
-plotcol <- c("#e29578","#e9c46a","white","#5a189a")
-names(plotpatt) <- names(plotcol) <- levels(accuracy.plot.df$FalseAssgn)
-
-
-
-
-basic.bar <- accuracy.plot.df %>% 
-  filter(Rank!="Class" & Rank != "Order") %>% 
-  ggplot(.,aes(fill=isassgn)) +
-  geom_bar(stat="identity",
-           position="stack",
-           color="black",
-           aes(y=Rank,x=FinalNum,fill=isassgn)) +
-  scale_fill_brewer(palette="Dark2") 
-basic.bar
-
-bar.patt <- basic.bar + 
-  ggpattern::geom_col_pattern(aes(y=Rank,x=FinalNum,
-                                  pattern=FalseAssgn,pattern_angle=FalseAssgn,
-                                  #pattern_color=FalseAssgn,
-                                  pattern_fill=FalseAssgn),
-                              color="black",
-                              pattern_density=0.7,pattern_spacing=0.02,
-                              pattern_alpha=0.8,
-                              pattern_key_scale_factor=1
-                              )
-bar.patt
-
-bar.patt.man <- bar.patt + 
-  scale_pattern_manual(values = plotpatt) + 
-  scale_pattern_fill_manual(values = plotcol)
-bar.patt.man
-
-bar.patt.theme <- bar.patt.man + 
-  guides(fill=guide_legend(order=1,
-                           title="Taxonomy assigned",
-                           override.aes = list(pattern="none")),
-         pattern_fill=guide_legend(title="Likely accuracy of assignment",
-                                   override.aes = list(pattern_alpha=0.5,
-                                                       fill="#1B9E77FF")),
-         pattern=guide_legend(title="Likely accuracy of assignment"),
-         pattern_angle=guide_legend(title="Likely accuracy of assignment")
-         ) + 
-  labs(x="Number of fish taxa", 
-       title="Number of chordate taxa assigned to each rank \n using the NCBI GenBank core nt database") + 
-  scale_x_continuous(expand = c(0,NA),limits=c(-10,125)) + 
-  theme(legend.position="right",
-        legend.spacing = unit(1,"cm"),
-        legend.box.margin = margin(c(1,0,1,1),unit="cm"),
-        legend.key.spacing.y = unit(0.1, "cm"),
-        legend.key.height = unit(1, "cm"),
-        legend.key.width = unit(1, "cm")
-        ) 
-bar.patt.theme
-  
-bar.patt.label <- bar.patt.theme +  
-  geom_label_repel(aes(x=(LabelNum), y=Rank, label=FinalNum),
-                   #position=position_stack(vjust = 0.8),
-                   #label.padding = unit(0.15,"line"),
-                   nudge_x=(-5),
-                   min.segment.length = 0.2,
-                   xlim=c(-10,150),
-                   size=5,label.size=1,
-                   show.legend=FALSE
-                   ) 
-bar.patt.label
+         ) %>% 
+  ungroup() %>% 
+  group_by(Rank) %>% 
+  arrange(desc(FalseAssgn),
+          .by_group = TRUE) %>% 
+  arrange(desc(isassgn),
+          .by_group = TRUE) %>%
+  mutate(,
+         LabelNum=(cumsum(FinalNum)))
 ```
 
-```{r}
-nassigned.mar.plot2 <- nassigned.mar.df %>%
-  ggplot(aes(y=Rank,x=value,fill=val)) + geom_bar(stat="identity",position="stack",color="black") + 
-  guides(fill=guide_legend(title="Taxonomy Assigned")) + 
-  labs(x="Number of fish taxa", title="Number of fish taxa assigned to each rank \n using only fish known to occur in the MAR") + 
-  scale_fill_brewer(palette="Dark2") + 
-  geom_label(aes(label=(ifelse(value>0 & value<275,value,NA))),hjust=2.5,
-                   size=5,label.size=1,show.legend=FALSE) + 
-  scale_x_continuous(expand = c(0,NA),limits=c(-10,300)) +  
-  theme(legend.position="right",
-        legend.spacing = unit(1,"cm"),
-        legend.box.margin = margin(c(1,0,1,1),unit="cm"),
-        legend.key.spacing.y = unit(0.1, "cm"),
-        legend.key.height = unit(1, "cm"),
-        legend.key.width = unit(1, "cm")
-        ) 
+### BOLD database   
+Using the new dataframe of only fish and elasmo species,  
+Get a list of species that are NOT in the MAR masked alias    
 
+bdsp: by subsetting the taxa df we just made to keep only those NOT in the MAR alias dataset   
+bdmarsp: Then get the list of species that ARE in the MAR dataset  
+
+After querying fishbase using the bdsp list, we will subdivide the species into fish:  
+1. known to occur in the MAR (bdmarsp + bdfshbse_mar)  
+2. fish from the Caribbean (bdfshbse_car)  
+3. fish that are not known to be in the region/found outside the region (bdfshbse_out)  
+4. fish that were not found in the databse (bdfshbse_notfound)
+
+```{r}
+bdsp <- unique(newbdtaxclass$Species)[!unique(newbdtaxclass$Species)%in%unique(newmartax$Species)] #species not in mar db
+bdmarsp <- unique(newbdtaxclass$Species)[unique(newbdtaxclass$Species)%in%unique(newmartax$Species)] #species in mar db
+```
+
+check that those numbers add up    
+```{r}
+#bd
+length(unique(newbdtaxclass$Species)) #total = 
+length(bdsp) # taxa not in database +
+length(bdmarsp) # taxa in database
+# +- 1 for NA 
+```
+
+Query fishbase  
+Use list of species not in the MAR masked alias database (bdsp)  
+```{r}
+bdfshbsecountrydf <- rfishbase::country(
+  species_list = bdsp,#spp,
+  #fields = NULL,
+  server = c("fishbase", "sealifebase"),
+  version = "latest"
+  #db = NULL,
+)
+```
+
+Get lists of species from fishbase output  
+bdfshbse_notfound: species not found in fishbase  
+bdfshbse_mar: species found in the MAR  
+bdfshbse_car: species not found in the MAR but found in the Caribbean  
+bdfshbse_out: species not recorded in the Caribbean 
+```{r}
+#list of species not found in fishbase  
+bdfshbse_notfound <- bdsp[!bdsp%in%unique(bdfshbsecountrydf$Species)]
+
+#list of species found in MAR  
+bdfshbse_mar <- bdfshbsecountrydf[bdfshbsecountrydf$country %in% c("Belize","Mexico","Guatemala","Honduras"),] %>%
+  .$Species %>% 
+  unique()
+
+#list of species found in caribbean countries 
+bdfshbse_car <- bdfshbsecountrydf[str_detect(bdfshbsecountrydf$country,
+                                     paste(carcountries,collapse="|")),] %>% 
+  filter(!Species%in%bdfshbse_mar) %>% #dont include species already identified as being in a MAR country
+  .$Species %>% 
+  unique() 
+
+#Species not recorded in the Caribbean  
+bdfshbse_out <- bdfshbsecountrydf %>% 
+  filter(!Species%in%bdfshbse_mar) %>% #don't include species found in MAR coubdries
+  filter(!Species%in%bdfshbse_car) %>% #don't include species found in caribbean countries 
+  .$Species %>% 
+  unique() %>%
+  sort()
+```
+
+Confirm numbers add up  
+```{r}
+#total num species
+length(unique(newbdtaxclass$Species))
+sum(length(bdmarsp),length(bdsp)) #sum of species found in MAR db and those not found in MAR db  
+
+#num species queried to fishbase  
+length(bdsp) #bdsp was used to query fishbase  
+sum(length(bdfshbse_notfound), #species not found in fishbase  
+    length(bdfshbse_mar), #species found in MAR
+    length(bdfshbse_car), #species found in Caribbean
+    length(bdfshbse_out) #species found outside of Caribbean  
+    )
+
+#total num species 
+length(unique(newbdtaxclass$Species))
+sum(length(bdmarsp), #species found in MAR database
+    length(bdfshbse_notfound), #species not found in fishbase  
+    length(bdfshbse_mar), #species found in MAR
+    length(bdfshbse_car), #species found in Caribbean
+    length(bdfshbse_out) #species found outside of Caribbean  
+    )
+```
+```{r}
+bdmarsp <-  bdmarsp[!is.na(bdmarsp)] #species found in MAR database
+bdfshbse_notfound <- bdfshbse_notfound[!is.na(bdfshbse_notfound)] #species not found in fishbase  
+bdfshbse_mar <- bdfshbse_mar[!is.na(bdfshbse_mar)] #species found in MAR
+bdfshbse_car <- bdfshbse_car[!is.na(bdfshbse_car)] #species found in Caribbean
+bdfshbse_out <- bdfshbse_out[!is.na(bdfshbse_out)] #species found outside of Caribbean  
 ```
 
 ```{r}
-design1="
-AAAA
-BBB#
-"
-wrap_plots(bar.patt.label, (nassigned.mar.plot2)) + 
-  plot_layout(design=design1) + plot_annotation(caption='A) Likelihood that a species could be found in the MAR was determined through a search of known countries in FishBase on 11 June 2025 \n B) Species assignments were restricted by taxid of known species',tag_levels='A',tag_sep = ".") & theme(text=element_text(size=20))
-
-#ggsave("/Users/lauragivens/Downloads/taxcov.fish.accuracy.png",width=15,height=9,bg="white")
-```
-
-### BOLD v5 plot  
-```{r}
-accuracy.bold <- ps.bold.melt %>% 
-  mutate(FalseAssgn = case_when(Species%in%noncarfshbd ~ "Geographically Unlikely", 
-                             Species%in%fshsppbd ~ "Known in Caribbean",
-                             Species%in%marsppbd ~ "Known in MAR",
-                             Species%in%bdfshbse ~ "Not in Fishbase",
-                             #Genus%in%ntgen & is.na(Species) ~ "Not Defined",
-                             is.na(Species) ~ NA
+accuracy.bd <- ps.bold.melt %>% 
+  mutate(FalseAssgn = case_when(Species%in%bdmarsp ~ "Known in MAR",
+                                Species%in%bdfshbse_mar ~ "Known in MAR",
+                                Species%in%bdfshbse_car ~ "Known in Caribbean",
+                                Species%in%bdfshbse_out ~ "Geographically Unlikely", 
+                             Species%in%bdfshbse_notfound ~ "Not in Fishbase",
+                             is.na(Species) ~ NA,
+                             .default="Not a fish species"
                              ),.after=Species)
-
-#sum(length(noncarfshbd),length(fshsppbd),length(marsppbd),length(bdfshbse))
 ```
 ```{r}
-accuracy.bd.plot.df <- accuracy.bold %>% select(-c(1:17)) %>% distinct() %>% #get a unique dataframe; should have one row for each species, one for each genus, etc  
+accuracy.bd.plot.df <- accuracy.bd %>% 
+  select(-c(1:17)) %>% 
+  distinct() %>% #get a unique dataframe; should have one row for each species, one for each genus, etc  
   mutate(rows=nrow(.)) %>%
-  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),names_to="Rank") %>%
+  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),
+               names_to="Rank") %>%
   mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
                              !is.na(value) ~ "Assigned"),
-         Rank=factor(Rank,levels=c("Species","Genus","Family","Order","Class"))
+         Rank=factor(Rank,
+                     levels=c("Species","Genus","Family","Order","Class"))
          ) %>% 
   group_by(Rank) %>% 
   mutate(NotAssgn=sum(isassgn=="Not Assigned"),
@@ -1140,7 +953,8 @@ accuracy.bd.plot.df <- accuracy.bold %>% select(-c(1:17)) %>% distinct() %>% #ge
          FalseAssgn=case_when(Rank=="Species" ~ FalseAssgn, 
                               #remove false assignments from everything other than species  
                               .default=NA)
-         ) %>% distinct() %>% #collapse down to unique rows
+         ) %>% 
+  distinct() %>% #collapse down to unique rows
   group_by(Rank,isassgn,FalseAssgn) %>% 
   reframe(rows=rows, #size of df
           NotAssgn=NotAssgn, #how many individuals in each group are not assigned
@@ -1148,101 +962,400 @@ accuracy.bd.plot.df <- accuracy.bold %>% select(-c(1:17)) %>% distinct() %>% #ge
           uniqranks=uniqgroups,# number of unique members of that rank
           isassgn=isassgn,
           FalseAssgn=FalseAssgn) %>% 
-  distinct() %>% group_by(Rank)  %>% arrange(desc(isassgn),.by_group = TRUE) %>%
+  distinct() %>% 
+  group_by(Rank) %>% 
+  arrange(desc(isassgn),
+          .by_group = TRUE) %>%
   mutate(FinalNum=case_when(isassgn=="Not Assigned" & is.na(FalseAssgn) ~ NotAssgn,
-                            isassgn=="Assigned" & is.na(FalseAssgn) ~ rows-NotAssgn,
+                            #isassgn=="Assigned" & is.na(FalseAssgn) ~ rows-NotAssgn,
+                            isassgn=="Assigned" & is.na(FalseAssgn) ~ uniqranks-NotAssgn,
                             #isassgn=="Not Assigned" & is.na(FalseAssgn) ~ (rows-sum(numuniqassgn)+1),
                             #uniqranks==numuniqassgn ~ rows,
                             .default=numuniqassgn),
         FalseAssgn=factor(FalseAssgn,
-                     levels=c(NA,"Not in Fishbase","Geographically Unlikely",
+                     levels=c(NA,"Not a fish species",
+                              "Not in Fishbase",
+                              "Geographically Unlikely",
                               "Known in Caribbean","Known in MAR"),ordered=TRUE)
-         ) %>% ungroup() %>% group_by(Rank)  %>% arrange(desc(FalseAssgn),.by_group = TRUE) %>% arrange(desc(isassgn),.by_group = TRUE) %>% mutate(,
-         LabelNum=( cumsum(FinalNum)))
+         ) %>% 
+  ungroup() %>% 
+  group_by(Rank) %>% 
+  arrange(desc(FalseAssgn),
+          .by_group = TRUE) %>% 
+  arrange(desc(isassgn),
+          .by_group = TRUE) %>%
+  mutate(,
+         LabelNum=(cumsum(FinalNum)))
+```
 
+### Combined database   
+Using the new dataframe of only fish and elasmo species,  
+Get a list of species that are NOT in the MAR masked alias    
+
+cbsp: by subsetting the taxa df we just made to keep only those NOT in the MAR alias dataset   
+cbmarsp: Then get the list of species that ARE in the MAR dataset  
+
+After querying fishbase using the cbsp list, we will sucbivide the species into fish:  
+1. known to occur in the MAR (cbmarsp + cbfshbse_mar)  
+2. fish from the Caribbean (cbfshbse_car)  
+3. fish that are not known to be in the region/found outside the region (cbfshbse_out)  
+4. fish that were not found in the databse (cbfshbse_notfound)
+
+```{r}
+cbsp <- unique(newcbtaxclass$Species)[!unique(newcbtaxclass$Species)%in%unique(newmartax$Species)] #species not in mar db
+cbmarsp <- unique(newcbtaxclass$Species)[unique(newcbtaxclass$Species)%in%unique(newmartax$Species)] #species in mar db
+```
+
+check that those numbers add up    
+```{r}
+#cb
+length(unique(newcbtaxclass$Species)) #total = 
+length(cbsp) # taxa not in database +
+length(cbmarsp) # taxa in database
+# +- 1 for NA 
+```
+
+Query fishbase  
+Use list of species not in the MAR masked alias database (cbsp)  
+```{r}
+cbfshbsecountrydf <- rfishbase::country(
+  species_list = cbsp,#spp,
+  #fields = NULL,
+  server = c("fishbase", "sealifebase"),
+  version = "latest"
+  #db = NULL,
+)
+```
+
+Get lists of species from fishbase output  
+cbfshbse_notfound: species not found in fishbase  
+cbfshbse_mar: species found in the MAR  
+cbfshbse_car: species not found in the MAR but found in the Caribbean  
+cbfshbse_out: species not recorded in the Caribbean 
+```{r}
+#list of species not found in fishbase  
+cbfshbse_notfound <- cbsp[!cbsp%in%unique(cbfshbsecountrydf$Species)]
+
+#list of species found in MAR  
+cbfshbse_mar <- cbfshbsecountrydf[cbfshbsecountrydf$country %in% c("Belize","Mexico","Guatemala","Honduras"),] %>%
+  .$Species %>% 
+  unique()
+
+#list of species found in caribbean countries 
+cbfshbse_car <- cbfshbsecountrydf[str_detect(cbfshbsecountrydf$country,
+                                     paste(carcountries,collapse="|")),] %>% 
+  filter(!Species%in%cbfshbse_mar) %>% #dont include species already identified as being in a MAR country
+  .$Species %>% 
+  unique() 
+
+#Species not recorded in the Caribbean  
+cbfshbse_out <- cbfshbsecountrydf %>% 
+  filter(!Species%in%cbfshbse_mar) %>% #don't include species found in MAR coucbries
+  filter(!Species%in%cbfshbse_car) %>% #don't include species found in caribbean countries 
+  .$Species %>% 
+  unique() %>%
+  sort()
+```
+
+Confirm numbers add up  
+```{r}
+#total num species
+length(unique(newcbtaxclass$Species))
+sum(length(cbmarsp),length(cbsp)) #sum of species found in MAR db and those not found in MAR db  
+
+#num species queried to fishbase  
+length(cbsp) #cbsp was used to query fishbase  
+sum(length(cbfshbse_notfound), #species not found in fishbase  
+    length(cbfshbse_mar), #species found in MAR
+    length(cbfshbse_car), #species found in Caribbean
+    length(cbfshbse_out) #species found outside of Caribbean  
+    )
+
+#total num species 
+length(unique(newcbtaxclass$Species))
+sum(length(cbmarsp), #species found in MAR database
+    length(cbfshbse_notfound), #species not found in fishbase  
+    length(cbfshbse_mar), #species found in MAR
+    length(cbfshbse_car), #species found in Caribbean
+    length(cbfshbse_out) #species found outside of Caribbean  
+    )
 ```
 ```{r}
-basic.bar.bd <- accuracy.bd.plot.df %>% 
+cbmarsp <-  cbmarsp[!is.na(cbmarsp)] #species found in MAR database
+cbfshbse_notfound <- cbfshbse_notfound[!is.na(cbfshbse_notfound)] #species not found in fishbase  
+cbfshbse_mar <- cbfshbse_mar[!is.na(cbfshbse_mar)] #species found in MAR
+cbfshbse_car <- cbfshbse_car[!is.na(cbfshbse_car)] #species found in Caribbean
+cbfshbse_out <- cbfshbse_out[!is.na(cbfshbse_out)] #species found outside of Caribbean  
+```
+
+```{r}
+accuracy.cb <- ps.comb.melt %>% 
+  mutate(FalseAssgn = case_when(Species%in%cbmarsp ~ "Known in MAR",
+                                Species%in%cbfshbse_mar ~ "Known in MAR",
+                                Species%in%cbfshbse_car ~ "Known in Caribbean",
+                                Species%in%cbfshbse_out ~ "Geographically Unlikely", 
+                             Species%in%cbfshbse_notfound ~ "Not in Fishbase",
+                             is.na(Species) ~ NA,
+                             .default="Not a fish species"
+                             ),.after=Species)
+```
+```{r}
+accuracy.cb.plot.df <- accuracy.cb %>% 
+  select(-c(1:17)) %>% 
+  distinct() %>% #get a unique dataframe; should have one row for each species, one for each genus, etc  
+  #mutate(rows=nrow(.)) %>%
+  pivot_longer(cols=c("Class","Order","Family","Genus","Species"),
+               names_to="Rank") %>%
+  mutate(isassgn = case_when(is.na(value) ~ "Not Assigned",
+                             !is.na(value) ~ "Assigned"),
+         Rank=factor(Rank,
+                     levels=c("Species","Genus","Family","Order","Class"))
+         ) %>% 
+  group_by(Rank) %>% 
+  mutate(NotAssgn=sum(isassgn=="Not Assigned"),
+         uniqgroups=length(unique(value)), #number of unique members of that rank
+         FalseAssgn=case_when(Rank=="Species" ~ FalseAssgn, 
+                              #remove false assignments from everything other than species  
+                              .default=NA)
+         ) %>% 
+  distinct() %>% #collapse down to unique rows
+  group_by(Rank,isassgn,FalseAssgn) %>% 
+  reframe(#rows=rows, #size of df
+          NotAssgn=NotAssgn, #how many individuals in each group are not assigned
+          numuniqassgn=length(unique(value)), #number of assigned (should stay the same except for species and any ranks with NA values)
+          uniqranks=uniqgroups,# number of unique members of that rank
+          isassgn=isassgn,
+          FalseAssgn=FalseAssgn) %>% 
+  distinct() %>% 
+  group_by(Rank) %>% 
+  arrange(desc(isassgn),
+          .by_group = TRUE) %>%
+  mutate(FinalNum=case_when(isassgn=="Not Assigned" & is.na(FalseAssgn) ~ NotAssgn,
+                            #isassgn=="Assigned" & is.na(FalseAssgn) ~ rows-NotAssgn,
+                            isassgn=="Assigned" & is.na(FalseAssgn) ~ uniqranks-NotAssgn,
+                            #isassgn=="Not Assigned" & is.na(FalseAssgn) ~ (rows-sum(numuniqassgn)+1),
+                            #uniqranks==numuniqassgn ~ rows,
+                            .default=numuniqassgn),
+        FalseAssgn=factor(FalseAssgn,
+                     levels=c(NA,"Not a fish species",
+                              "Not in Fishbase",
+                              "Geographically Unlikely",
+                              "Known in Caribbean","Known in MAR"),ordered=TRUE)
+         ) %>% 
+  ungroup() %>% 
+  group_by(Rank) %>% 
+  arrange(desc(FalseAssgn),
+          .by_group = TRUE) %>% 
+  arrange(desc(isassgn),
+          .by_group = TRUE) %>%
+  mutate(,
+         LabelNum=(cumsum(FinalNum)))
+```
+
+## Plot  
+```{r}
+plotpatt <- c("stripe", #"Not a fish species"
+              "crosshatch", #"Not in Fishbase" 
+              "stripe", #"Geographically Unlikely"
+              "circle",#"Known in Caribbean"
+              "circle"#"Known in MAR" 
+              )
+
+plotcol <- c(#"#D95F02FF", #NA
+             "darkblue", #"Not a fish species"
+             #"#e29578", 
+             "darkgreen", #"Not in Fishbase" 
+             "white",#"Geographically Unlikely"
+             "#5a189a",#"Known in Caribbean"
+             "#1B9E77FF"#"Known in MAR" 
+             )
+
+plotden <- c(#10, #NA
+             0.1, #"Not a fish species"
+             0.5, #"Not in Fishbase" 
+             0.4,#"Geographically Unlikely"
+             0.8,#"Known in Caribbean"
+             10#"Known in MAR" 
+             )
+
+names(plotpatt) <- names(plotcol) <- names(plotden) <- levels(accuracy.nt.plot.df$FalseAssgn)
+
+legend.guide <- guide_legend(override.aes=list(pattern_fill=NA,pattern_color=NA,pattern_alpha=0))
+#legend.guide <- guide_legend(override.aes=list(pattern_fill=NA,pattern_color=NA,pattern_alpha=NA,fill=NA))
+legend.fill.guide <- guide_legend(override.aes=list(fill="#1B9E77FF"),
+                                  nrow=2,
+                                  theme = theme(#legend.margin=margin(2,2,2,2,"line"),
+        legend.key.spacing.y=unit(0.5,"line"),
+        legend.key.height=unit(1,"line"),
+        legend.key.width=unit(1,"line")
+        ) )
+```
+
+```{r}
+accuracy.nt.plot.base <- accuracy.nt.plot.df %>% 
   filter(Rank!="Class" & Rank != "Order") %>% 
-  ggplot(.,aes(fill=isassgn)) +
+  ggplot(.,aes(fill=isassgn)
+         ) +
   geom_bar(stat="identity",
            position="stack",
            color="black",
            aes(y=Rank,x=FinalNum,fill=isassgn)) +
-  scale_fill_brewer(palette="Dark2") 
-basic.bar.bd
+  scale_fill_brewer(name="Taxonomy Assigned",palette="Dark2",guide="none") 
 
-bar.bd.patt <- basic.bar.bd + 
+accuracy.bd.plot.base <- accuracy.bd.plot.df %>% 
+  filter(Rank!="Class" & Rank != "Order") %>% 
+  ggplot(.,aes(fill=isassgn)
+         ) +
+  geom_bar(stat="identity",
+           position="stack",
+           color="black",
+           aes(y=Rank,x=FinalNum,fill=isassgn)) +
+  scale_fill_brewer(name="Taxonomy Assigned",palette="Dark2",guide="none") 
+
+accuracy.cb.plot.base <- accuracy.cb.plot.df %>% 
+  filter(Rank!="Class" & Rank != "Order") %>% 
+  ggplot(.,aes(fill=isassgn)
+         ) +
+  geom_bar(stat="identity",
+           position="stack",
+           color="black",
+           aes(y=Rank,x=FinalNum,fill=isassgn)) +
+  scale_fill_brewer(name="Taxonomy Assigned",palette="Dark2",guide="none") 
+```
+
+```{r}
+accuracy.nt.plot <- accuracy.nt.plot.base  +
   ggpattern::geom_col_pattern(aes(y=Rank,x=FinalNum,
                                   pattern=FalseAssgn,
-                                  pattern_angle=FalseAssgn,
-                                  #pattern_color=FalseAssgn,
-                                  pattern_fill=FalseAssgn),
+                                  pattern_color=FalseAssgn,
+                                  pattern_fill=FalseAssgn
+                                  ),
                               color="black",
-                              pattern_density=0.7,pattern_spacing=0.02,
+                              pattern_density=0.3,
+                              pattern_spacing=0.03,
                               pattern_alpha=0.8,
-                              pattern_key_scale_factor=1
-                              )
-bar.bd.patt
-
-bar.bd.patt.man <- bar.bd.patt + 
-  scale_pattern_manual(values = plotpatt[names(plotpatt)%in%levels(accuracy.bd.plot.df$FalseAssgn)]
-                       ) + 
-  scale_pattern_fill_manual(values =  plotcol[names(plotcol)%in%levels(accuracy.bd.plot.df$FalseAssgn)]
-                            ) 
-bar.bd.patt.man
-
-bar.bd.patt.theme <- bar.bd.patt.man + 
-  guides(fill=guide_legend(order=1,
-                           title="Taxonomy assigned",
-                           override.aes = list(pattern="none")),
-         pattern_fill=guide_legend(title="Likely accuracy of assignment",
-                                   override.aes = list(pattern_alpha=0.5,
-                                                       fill="#1B9E77FF")),
-         pattern=guide_legend(title="Likely accuracy of assignment"),
-         pattern_angle=guide_legend(title="Likely accuracy of assignment")
-         ) + 
-  labs(x="Number of fish taxa", 
-       title="Number of chordate taxa assigned to each rank \n using the NCBI GenBank core nt database") + 
-  scale_x_continuous(expand = c(0,NA),limits=c(-5,140)) + 
-  theme(legend.position="right",
-        legend.spacing = unit(1,"cm"),
-        legend.box.margin = margin(c(1,0,1,1),unit="cm"),
-        legend.key.spacing.y = unit(0.1, "cm"),
-        legend.key.height = unit(1, "cm"),
-        legend.key.width = unit(1, "cm")
-        ) 
-bar.bd.patt.theme
-  
-bar.bd.patt.label <- bar.bd.patt.theme +  
-  geom_label_repel(aes(x=(LabelNum), y=Rank, label=FinalNum),
-                   #position=position_stack(vjust = 0.8),
-                   #label.padding = unit(0.15,"line"),
-                   nudge_x=(-5),
+                              pattern_key_scale_factor=1,
+                              na.rm=TRUE
+                              ) + 
+  scale_pattern_manual(name="Likely accuracy of assignment",values = plotpatt) + 
+  scale_pattern_color_manual(name="Likely accuracy of assignment",values = plotcol) +  
+  scale_pattern_fill_manual(name="Likely accuracy of assignment",values = plotcol) +  
+  geom_label_repel(aes(x=(LabelNum), y=Rank, label=ifelse(FinalNum>1,FinalNum,NA)),
+                   nudge_x=(-4),
                    min.segment.length = 0.2,
-                   xlim=c(-10,800),
-                   size=5,label.size=1,
+                  size=5,
+                  label.size=1,
                    show.legend=FALSE
-                   ) 
-bar.bd.patt.label
+                   ) + 
+  guides(fill=legend.guide,
+         pattern_density=legend.fill.guide,
+         pattern=legend.fill.guide,
+         pattern_color=legend.fill.guide,
+         pattern_fill=legend.fill.guide) 
+  #theme(legend.position="right",
+  #      legend.margin=margin(2,2,2,2,"line"),
+  #      legend.key.spacing.y=unit(1,"line"),
+  #      legend.key.height=unit(3,"line"),
+  #      legend.key.width=unit(3,"line")
+  #      ) 
+
+accuracy.bd.plot <- accuracy.bd.plot.base +
+  ggpattern::geom_col_pattern(aes(y=Rank,x=FinalNum,
+                                  pattern=FalseAssgn,
+                                  pattern_color=FalseAssgn,
+                                  pattern_fill=FalseAssgn
+                                  ),
+                              color="black",
+                              pattern_density=0.3,
+                              pattern_spacing=0.03,
+                              pattern_alpha=0.8,
+                              pattern_key_scale_factor=1,
+                              na.rm=TRUE
+                              ) + 
+  scale_pattern_density_manual(name="Likely accuracy of assignment",values=plotden) +
+  scale_pattern_manual(name="Likely accuracy of assignment",values = plotpatt) + 
+  scale_pattern_color_manual(name="Likely accuracy of assignment",values = plotcol) +  
+  scale_pattern_fill_manual(name="Likely accuracy of assignment",values = plotcol) +  
+  geom_label_repel(aes(x=(LabelNum), y=Rank, label=ifelse(FinalNum>1,FinalNum,NA)),
+                  nudge_x=(-4),
+                   min.segment.length = 0.2,
+                   size=5,
+                  label.size=1,
+                   show.legend=FALSE
+                   ) + 
+  guides(fill=legend.guide,
+         pattern=legend.fill.guide,
+         pattern_color=legend.fill.guide,
+         pattern_fill=legend.fill.guide)
+
+accuracy.cb.plot <- accuracy.cb.plot.base +
+  ggpattern::geom_col_pattern(aes(y=Rank,x=FinalNum,
+                                  pattern=FalseAssgn,
+                                  pattern_color=FalseAssgn,
+                                  pattern_fill=FalseAssgn
+                                  ),
+                              color="black",
+                              pattern_density=0.3,
+                              pattern_spacing=0.03,
+                              pattern_alpha=0.8,
+                              pattern_key_scale_factor=1,
+                              na.rm=TRUE
+                              ) + 
+  scale_pattern_manual(name="Taxonomic \n assignment",values = plotpatt) + 
+  scale_pattern_color_manual(name="Taxonomic \n assignment",values = plotcol) +  
+  scale_pattern_fill_manual(name="Taxonomic \n assignment",values = plotcol) +  
+  geom_label_repel(aes(x=(LabelNum), y=Rank, label=ifelse(FinalNum>1,FinalNum,NA)),
+                   nudge_x=(-4),
+                   min.segment.length = 0.2,
+                   size=5,
+                  label.size=1,
+                   show.legend=FALSE
+                   )+ 
+  guides(#fill=legend.guide,
+         pattern=legend.fill.guide,
+         pattern_color=legend.fill.guide,
+         pattern_fill=legend.fill.guide) +
+  labs(x="Number")
+```
+```{r,warning=FALSE}
+wrap_plots((accuracy.nt.plot + theme(legend.position="none",axis.title.x=element_blank()) & scale_x_continuous(expand=c(0,NA),limits=c(0,225))),
+           (accuracy.bd.plot + theme(legend.position="none",axis.title.x=element_blank()) & scale_x_continuous(expand=c(0,NA),limits=c(0,225))),
+           (accuracy.cb.plot & scale_x_continuous(expand=c(0,NA),limits=c(0,225))),
+           guides = "collect",
+           nrow=3) + 
+  plot_annotation(tag_levels = "A", 
+                  caption="A) Annotated with the NCBI nt database; B) Annotated with the BOLD v5 database;
+                  C) Annotated with both NCBI and BOLD and retaining only taxonomic assignments without disagreement")
+
+#ggsave("databaseComparison.png",width=10,height=7)
 ```
 
-```{r,warning=FALSE}
-design2="
-AAAAA
-BBBB#
-CCC##
-"
+```{r}
+nassigned.mar.df %>%
+  ggplot(aes(y=Rank,x=value,fill=val)) +
+  geom_bar(stat="identity",position="stack",color="black") + 
+  scale_fill_brewer(palette="Dark2") + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,value,NA))),hjust=2.5,
+                   size=5,label.size=1,show.legend=FALSE) 
 
-patchwork::wrap_plots(bar.patt.label, nassigned.mar.plot2, bar.bd.patt.label,nrow=3,guides="collect") + 
-  plot_layout(design=design2) + plot_annotation(caption='A) Likelihood that a species could be found in the MAR was determined through a search of known countries in FishBase on 11 June 2025 \n B) Species assignments were restricted by taxid of known species',tag_levels='A',tag_sep = ".") & theme(text=element_text(size=20))
+nassigned.bold.df %>%
+  ggplot(aes(y=Rank,x=value,fill=val)) +
+  geom_bar(stat="identity",position="stack",color="black") + 
+  scale_fill_brewer(palette="Dark2") + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,value,NA))),hjust=2.5,
+                   size=5,label.size=1,show.legend=FALSE) 
 
-#ggsave("/Users/lauragivens/Downloads/taxcov.fish.accuracy.png",width=15,height=9,bg="white")
+nassigned.comb.df %>%
+  ggplot(aes(y=Rank,x=value,fill=val)) +
+  geom_bar(stat="identity",position="stack",color="black") + 
+  scale_fill_brewer(palette="Dark2") + 
+  geom_label(aes(label=(ifelse(value>0 & value<275,value,NA))),hjust=2.5,
+                   size=5,label.size=1,show.legend=FALSE) 
 ```
 
 # Session Info  
 ```{r}
-save.image("RData/OceanDNAprop.v1.RData")
+save.image("RData/OceanDNAprop.v2.RData")
 sessionInfo()
 ```
 
