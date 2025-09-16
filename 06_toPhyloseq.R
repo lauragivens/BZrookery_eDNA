@@ -11,7 +11,7 @@ setwd(dir_results)
 blast_output <- read.delim('dada2.uniques.BLAST.martaxid.tsv',header = FALSE)
 colnames(blast_output) <- c('qseqid','sseqid','pident','length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore')
 
-blast_nt_output <- read.delim('dada2.uniques.BLAST.default.tsv',header = FALSE)
+blast_nt_output <- read.delim('dada2.uniques.BLAST.wordsize.tsv',header = FALSE)
 colnames(blast_nt_output) <- c('qseqid','sseqid','pident','length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore')
 
 # upload accession - to - taxid files
@@ -20,9 +20,9 @@ taxresults_mar <- read.csv('taxonomizr.mar.v2.taxResults.csv')
 t2 <- readRDS('taxonomizr.mar.v2.merge.rds')
 names(t2)[4:10] <- str_to_title(names(t2)[4:10])
 
-taxid <- read.csv('taxonomizr.v2.taxaID.csv')
-taxresults <- read.csv('taxonomizr.v2.taxResults.csv')
-t2d <- readRDS('taxonomizr.v2.merge.rds')
+taxid <- read.csv('taxonomizr.wordsize.taxaID.csv')
+taxresults <- read.csv('taxonomizr.wordsize.taxResults.csv')
+t2d <- readRDS('taxonomizr.wordsize.merge.rds')
 names(t2d)[4:10] <- str_to_title(names(t2d)[4:10])
 t2dd <- distinct(t2d)
 
@@ -194,16 +194,16 @@ write.csv(curated_asv,paste0(dir_results,"/asvtable.csv"))
 write.csv(samplelist,paste0(dir_results,'/metadata.csv'))
 
 # Save nt 
-saveRDS(ps.nt,paste0(dir_results,"/ps.v2.nt.rds"))
-saveRDS(ps.nt.troph,paste0(dir_results,"/ps.v2.nt.troph.rds"))
+saveRDS(ps.nt,paste0(dir_results,"/ps.wordsize.nt.rds"))
+saveRDS(ps.nt.troph,paste0(dir_results,"/ps.wordsize.nt.troph.rds"))
 
-saveRDS(taxa_nt_sub,paste0(dir_results,"/taxtable.v2.nt.rds"))
-saveRDS(taxa_nt_troph,paste0(dir_results,"/taxtable.v2.nt.wtroph.rds"))
+saveRDS(taxa_nt_sub,paste0(dir_results,"/taxtable.wordsize.nt.rds"))
+saveRDS(taxa_nt_troph,paste0(dir_results,"/taxtable.wordsize.nt.wtroph.rds"))
 
-write.csv(taxa_nt_sub,paste0(dir_results,"/taxtable.v2.nt.csv"))
-write.csv(taxa_nt_troph,paste0(dir_results,"/taxtable.v2.nt.wtroph.csv"))
-
-
+write.csv(taxa_nt_sub,paste0(dir_results,"/taxtable.wordsize.nt.csv"))
+write.csv(taxa_nt_troph,paste0(dir_results,"/taxtable.wordsize.nt.wtroph.csv"))
 
 
-save.image(paste0(dir_data,'/06_toPhyloseq_v2.RData'))
+
+
+save.image(paste0(dir_data,'/06_toPhyloseq_wordsize.RData'))

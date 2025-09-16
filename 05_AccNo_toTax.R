@@ -20,7 +20,7 @@ setwd(dir_results)
 # set header=FALSE because CLI doesn't output headers
 # then make a vector of accession numbers  
 # this will be used to get the NCBI taxid 
-blastResults<-read.table('dada2.uniques.BLAST.default.tsv',header=FALSE,stringsAsFactors=FALSE)
+blastResults<-read.table('dada2.uniques.BLAST.wordsize.tsv',header=FALSE,stringsAsFactors=FALSE)
 accessions<-strsplit(blastResults[,2],'\\|') #select the second column
 
 # convert accessions to taxa 
@@ -45,12 +45,12 @@ t2d <- merge(t1d,taxResults,by.x='taxid',all.x=TRUE) %>% rename('qseqid'="V1","s
 # save the taxid as a csv 
 # save the taxonomy table with taxid as a csv 
 # save the taxonomy table with metadata as a csv
-write.csv(taxaId,"taxonomizr.v2.taxaID.csv")
-write.csv(taxResults, "taxonomizr.v2.taxResults.csv")
-write.csv(t2d,'taxonomizr.v2.merge.csv')
+write.csv(taxaId,"taxonomizr.wordsize.taxaID.csv")
+write.csv(taxResults, "taxonomizr.wordsize.taxResults.csv")
+write.csv(t2d,'taxonomizr.wordsize.merge.csv')
 
 # save the taxonomy table with metadata as a rds object
-write_rds(t2d,'taxonomizr.v2.merge.rds')
+write_rds(t2d,'taxonomizr.wordsize.merge.rds')
 
 ########################### MAR database ###########################
 
@@ -120,4 +120,4 @@ write.csv(bold_selected,paste0(dir_results,"/bold_identification.csv"))
 write.csv(t3,paste0(dir_results,"/taxonomizr.bold.merge.rds"))
 write_rds(t3,paste0(dir_results,"/taxonomizr.bold.merge.rds"))
 
-save.image(paste0(dir_data,"/05_AccNo_Tax_v2.RData"))
+save.image(paste0(dir_data,"/05_AccNo_Tax_wordsize.RData"))
