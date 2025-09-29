@@ -1,0 +1,361 @@
+---
+title: "Untitled"
+author: "Laura Givens"
+date: "2025-09-09"
+output: html_document
+---
+
+# Load  
+Load libraries  
+```{r,message=FALSE}
+library(phyloseq)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+library(patchwork)
+```
+
+Load data  
+```{r load}
+dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_man <- "/Volumes/Fuji/Mangroves"
+dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+#dir_results <- "/Users/lauragivens/Desktop/MangroveResults"
+
+ps.og <- readRDS(paste0(dir_results,"/prune.decontam.combined.ps.rds"))
+#taxa_nt_troph <- readRDS(paste0(dir_results,"/taxtable.v2.nt.wtroph.rds"))
+#tax.combined.df <- readRDS(paste0(dir_results,"/tax.combined.df.rds"))
+taxa.traits.df <- readRDS(paste0(dir_results,"/taxa.combined.traitsdf.rds"))
+```
+
+```{r}
+ggplot2::theme_set(theme_cowplot() + theme(
+  legend.position = "bottom",
+  panel.border = element_rect(color='black'),
+  legend.box.margin = margin(5,5,5,5),
+  legend.spacing = unit(0,"pt"),
+  plot.title = element_text(face="bold"),
+  plot.caption = element_text(face="italic"),
+  text = element_text(size=(15),family="Times"),
+  legend.key.height = unit(10,"pt"),
+  legend.key.width = unit(10,"pt")
+))
+```
+
+# Update ps  
+```{r}
+tax <- tax_table(as.matrix(taxa.traits.df %>% select(-seqid)))
+tax_table(ps.og) <- tax
+```
+
+```{r}
+ps <- ps.og 
+```
+
+keep chordates  
+```{r}
+ps <- ps %>% 
+  prune_samples(sample_sums(.)>50,.) %>% 
+  subset_samples(Rookery!="Practice") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>% 
+  prune_samples(sample_sums(.)>0,.)
+
+ps.ch <-  ps %>% subset_taxa(.,Phylum=="Chordata") %>% 
+  subset_taxa(.,Class != "Reptilia" & Class != "Ascidiacea" & Class != "Aves") 
+
+ps.pa <- ps %>% subset_taxa(.,Phylum=="Chordata") %>% 
+  subset_taxa(.,Class != "Reptilia" & Class != "Ascidiacea" & Class != "Aves") %>%
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.pa.melt <- psmelt(ps.pa)
+```
+keep chordates that make up at least 1 pct of taxa  
+```{r,eval=FALSE}
+mean_cutoff = 0.01
+mean_test = function(x) {
+  mean(x) >= mean_cutoff
+}
+ ps.1pct <- ps %>%
+   filter_taxa(mean_test, prune=TRUE) 
+
+ ps.1pct.pa <- ps.1pct %>% 
+   subset_taxa(.,Phylum=="Chordata") %>% 
+  subset_taxa(.,Class != "Reptilia" & Class != "Ascidiacea" & Class != "Aves") %>%
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+ 
+ps.1pct.pa.melt <- psmelt(ps.1pct.pa)
+``` 
+keep taxa seen at least twice in 2 or more samples  
+```{r} 
+# keep only taxa seen at least twice in at least 2% of samples
+#ps.prune <- filter_taxa(ps, function(x) sum(x >= 2) > (0.02*length(x)), TRUE)
+
+ps.prune <- filter_taxa(ps, function(x) sum(x >= 2) >= 2, TRUE)
+
+ps.prune.pa <- ps.prune %>% 
+  subset_taxa(.,Phylum=="Chordata") %>% 
+  subset_taxa(.,Class != "Reptilia" & Class != "Ascidiacea" & Class != "Aves") %>%
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.prune.pa.melt <- psmelt(ps.prune.pa)
+```
+Compare  
+```{r}
+ps
+#ps.1pct
+ps.prune
+
+ps.pa
+#ps.1pct.pa
+ps.prune.pa
+```
+Save
+```{r}
+write.csv((ps.prune.pa.melt %>% filter(Abundance > 0)),"/Users/lauragivens/Downloads/bzrookery.fish.csv")
+```
+
+# Descriptive Stats  
+Sequence distribution  
+```{r distribution}
+plot_bar(ps)
+```
+
+Unique taxa  
+```{r num_taxa}
+  tibble(Rank = rank_names(ps)) %>% 
+    rowwise %>%
+    mutate(Unique = length(get_taxa_unique((ps),Rank)))
+```
+Unique chordate taxa  
+```{r num_cbhordate_taxa}
+ tibble(Rank = rank_names(ps.ch)) %>% 
+    rowwise %>%
+    mutate(Unique = length(get_taxa_unique((ps.ch),Rank)))
+```
+
+# Top taxa  
+```{r}
+top100 <- names(sort(taxa_sums(ps.prune.pa %>%
+  subset_taxa(.,Phylum=="Chordata") %>% 
+  subset_taxa(.,Class != "Reptilia" & Class != "Ascidiacea" & Class != "Aves")), decreasing=TRUE))[1:100]
+
+t100.tab <- ps.prune.pa %>% prune_taxa(top100, .) %>% tax_table() %>% as.matrix() %>% as.data.frame()
+t100.tab %>% rownames_to_column("seqid") %>% .[match(top100,.$seqid),] %>% filter(Class=="Actinopterygii") #%>% .$Species %>% unique()
+
+#t100.tab %>% 
+#  rownames_to_column("seqid") %>%
+#  .[match(top100,.$seqid),] %>% 
+ps.prune.pa.melt %>% 
+  filter(Abundance > 0 & Class=="Actinopterygii") %>%
+  group_by(Species) %>%
+  summarize(Species=unique(Species),
+            n=sum(Abundance)
+            ) %>% arrange(desc(n))
+```
+
+Confirm old top taxa is because of the coverage:  
+```{r,eval=FALSE}
+setwd("/Users/lauragivens/Desktop/MangroveResults")
+marblastResults<-read.table('dada2.uniques.BLAST.martaxid.v1.tsv',header=FALSE,stringsAsFactors=FALSE)
+maraccessions<-strsplit(marblastResults[,2],'\\|') #pull accession numbers into a list
+martaxaId<-accessionToTaxa(maraccessions,"~/accessionTaxa.sql") 
+martaxResults <- as.data.frame(getTaxonomy(unique(martaxaId),'~/accessionTaxa.sql')) %>% 
+                    rownames_to_column(.,"taxid") %>% mutate(.,taxid=str_trim(taxid))
+t1 <- marblastResults[1:2] #qseqid sseqid
+t1$taxid <- unlist(martaxaId) %>% as.character()
+t2 <- merge(t1,martaxResults,by.x='taxid',all.x=TRUE) %>% rename('qseqid'="V1","sseqid"="V2")
+  
+merge(marblastResults,t1,by='V2',all.x=TRUE) %>% 
+  merge(.,martaxResults,by="taxid",all.x=TRUE) %>% 
+  filter(species%in% c("Xyrichtys martinicensis", "Apogon planifrons", "Diodon hystrix")) #previous top taxa
+#these are only covered by ~30 bp
+```
+
+# Richness  
+```{r rich-samplename}
+plot_richness(ps,x="SampleName",measures = c("Observed","Shannon"),color="Rookery")
+```
+
+```{r}
+tab.pa <- otu_table(ps.pa) %>% as.matrix() %>% as.data.frame() %>% t()
+
+richdf <- rowSums(tab.pa) %>% 
+  as.data.frame() %>% 
+  `colnames<-` ("samplerichness") %>% 
+  mutate(Sample=rownames(.)) %>% left_join(select((sample_data(ps.ch) %>% as.matrix() %>% as.data.frame() %>% mutate(Sample=rownames(.))),Sample,Month,Site,Rookery))
+```
+```{r}
+wrap_plots(
+ggplot(richdf) + geom_boxplot(aes(x=Month,y=samplerichness)) + labs(x="Month",y="Sample Richness"),
+ggplot(richdf) + geom_boxplot(aes(x=Site,y=samplerichness)) + labs(x="Site",y="Sample Richness"),
+ggplot(richdf) + geom_boxplot(aes(x=Rookery,y=samplerichness)) + labs(x="Rookery",y="Sample Richness")
+)
+
+
+wrap_plots(
+ggplot(richdf) + geom_boxplot(aes(x=Site,y=samplerichness)) + labs(x="Site",y="Number of taxa"),
+ggplot(richdf) + geom_boxplot(aes(x=Rookery,y=samplerichness)) + labs(x="Rookery",y="Number of taxa")
+) & theme_bw() & theme(axis.title.x=element_blank())
+
+#ggsave("/Users/lauragivens/Downloads/richness.boxplots.png",width=10,height=5,bg="white")
+```
+
+## Species of importance   
+```{r impspp_plot}
+comm.sp <- ps.pa.melt %>% filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  #select(contains("Commer") | contains("Small.scale")) %>%
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% mutate(New=case_when(is.na(New) ~ FALSE,.default=New))
+
+comm.sp.prune <- ps.prune.pa.melt %>% filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  #select(contains("Commer") | contains("Small.scale")) %>%
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% mutate(New=case_when(is.na(New) ~ FALSE,.default=New))
+```
+```{r}
+comm.sp %>%
+  ggplot(aes(x=Month,fill=New,y=Rel)) + geom_bar(stat="identity",position="stack") + facet_grid(Site ~ Rookery) + guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) + theme_bw() + labs(y="Relative Abundance")
+
+comm.sp.prune %>%
+  ggplot(aes(x=Month,fill=New,y=Rel)) + geom_bar(stat="identity",position="stack") + facet_grid(Site ~ Rookery) + guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) + theme_bw() + labs(y="Relative Abundance")
+
+#ggsave("/Users/lauragivens/Downloads/hannahfig1.png")
+```
+```{r}
+comm.sp %>% filter(New==TRUE) %>% 
+  mutate(Small.scale.Fisheries=case_when(Small.scale.Fisheries==TRUE ~ 1,.default=0),
+         Sport=case_when(Gamefish==TRUE ~ 1, .default=0),
+         Commercial=case_when(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes") ~ 1,
+                              Commercial.FSH==TRUE ~ 1,
+                              Reported.Commercial.Exploited.other==TRUE ~ 1,
+                              Commercially.Imp.Occurring.IN.Belize==TRUE ~ 1,
+                              #matches("ommercial")=="YES" ~ 1,
+                              .default=0),
+         ) %>%
+  select(c(Site,Rookery,
+           #Species,
+           Common.name,#matches("commerc")
+           Small.scale.Fisheries,
+           Sport,Commercial
+           )) %>% 
+  distinct() %>% 
+  mutate(n="x") %>% 
+  pivot_wider(names_from=c("Site","Rookery"), #output column names 
+              names_sort=TRUE,
+              values_from="n" #output cell values 
+              ) %>% 
+  arrange(Common.name)
+
+comm.sp.prune %>% filter(New==TRUE) %>% 
+  mutate(Small.scale.Fisheries=case_when(Small.scale.Fisheries==TRUE ~ 1,.default=0),
+         Sport=case_when(Gamefish==TRUE ~ 1, .default=0),
+         Commercial=case_when(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes") ~ 1,
+                              Commercial.FSH==TRUE ~ 1,
+                              Reported.Commercial.Exploited.other==TRUE ~ 1,
+                              Commercially.Imp.Occurring.IN.Belize==TRUE ~ 1,
+                              #matches("ommercial")=="YES" ~ 1,
+                              .default=0),
+         ) %>%
+  select(c(Site,Rookery,
+           #Species,
+           Common.name,#matches("commerc")
+           Small.scale.Fisheries,
+           Sport,Commercial
+           )) %>% 
+  distinct() %>% 
+  mutate(n="x") %>% 
+  pivot_wider(names_from=c("Site","Rookery"), #output column names 
+              names_sort=TRUE,
+              values_from="n" #output cell values 
+              ) %>% 
+  arrange(Common.name)
+```
+
+```{r impspp_table}
+impspp.table <- comm.sp.prune %>% #comm.sp %>% 
+  filter(New==TRUE) %>% 
+  mutate(Small.scale.Fisheries=case_when(Small.scale.Fisheries==TRUE ~ 1,.default=0),
+         Sport=case_when(Gamefish==TRUE ~ 1, .default=0),
+         Commercial=case_when(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes") ~ 1,
+                              Commercial.FSH==TRUE ~ 1,
+                              Reported.Commercial.Exploited.other==TRUE ~ 1,
+                              Commercially.Imp.Occurring.IN.Belize==TRUE ~ 1,
+                              #matches("ommercial")=="YES" ~ 1,
+                              .default=0),
+         ) %>%
+  select(c(Site,Rookery,
+           Species,
+           Common.name,#matches("commerc")
+           Small.scale.Fisheries,
+           Sport,Commercial
+           )) %>% 
+  distinct() %>% 
+  mutate(n="x") %>% 
+  pivot_wider(names_from=c("Site","Rookery"), #output column names 
+              names_sort=TRUE,
+              values_from="n" #output cell values 
+              ) %>% 
+  arrange(Common.name) %>% 
+  mutate(Common.name=paste0(Common.name,", ",Species)) %>% select(-Species)
+
+impspp.table
+write.csv(impspp.table,"/Users/lauragivens/Downloads/impspp.table.csv")
+```
+
+# Ordination  
+```{r}
+plot_ordination(ps,ordinate((ps %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)),method="NMDS"),color="Side") + facet_grid(Site~Rookery) + theme_bw()
+#ggsave("/Users/lauragivens/Downloads/leeward.windward.nmds.png",width=7,height=5)
+```
+
+# Important species  
+```{r}
+ps.pa.melt %>% 
+  group_by(Rookery,Site,Species) %>%
+  summarize(Abund=sum(Abundance),spec=unique(Species)) %>% 
+  filter(Abund>0) %>% ungroup() %>% 
+  group_by(Rookery,Site) %>% 
+  summarize(n=length(Species)) %>% pivot_wider(names_from="Rookery",values_from="n") %>% flextable::flextable()
+```
+```{r}
+ps.pa.melt %>% 
+  group_by(Month,Rookery,Site,Species) %>%
+  summarize(Abund=sum(Abundance),spec=unique(Species)) %>% 
+  filter(Abund>0) %>% ungroup() %>% 
+  group_by(Month,Rookery,Site) %>% 
+  summarize(n=length(Species)) %>% pivot_wider(names_from="Month",values_from="n") %>% arrange(desc(Site)) %>% flextable::flextable()
+```
+
+```{r}
+hc <- get_taxa_unique(ps.ch %>% subset_samples(Site=="Hicks Caye") %>% prune_taxa(taxa_sums(.)>0,.),'Species')
+dc <- get_taxa_unique(ps.ch %>% subset_samples(Site=="Drowned Caye") %>% prune_taxa(taxa_sums(.)>0,.),'Species')
+ta <- get_taxa_unique(ps.ch %>% subset_samples(Site=="Turneffe Atoll") %>% prune_taxa(taxa_sums(.)>0,.),'Species')
+
+hc[!hc%in%c(dc,ta)]
+dc[!dc%in%c(hc,ta)]
+ta[!ta%in%c(hc,dc)]
+```
+
+# Questions  
+What happened to sportfish that showed up in original report?  
+E.g., tarpon, bonefish, and permit
+(Megalops atlanticus, Albula vulpes, Trachinotus falcatus)
+```{r}
+ps %>% subset_taxa(Genus=="Megalops") %>% plot_bar()
+ps %>% subset_taxa(Genus=="Trachinotus") %>% plot_bar()
+ps %>% subset_taxa(Genus=="Albula") %>% plot_bar()
+  
+ps %>% subset_taxa(Genus=="Albula") %>% get_taxa_unique("Species")
+```
+
+
+```{r}
+sessionInfo()
+```
+

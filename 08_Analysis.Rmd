@@ -1,3 +1,8 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
 
 # Load  
 Load libraries  
@@ -13,37 +18,26 @@ library(lme4)
 Load data  
 ```{r load}
 dir_data <- '/Users/lauragivens/Desktop/R/BZrookery_eDNA/Rdata'
+dir_man <- "/Volumes/Fuji/Mangroves"
 dir_results <- "/Volumes/Fuji/Mangroves/2025_0319_Givens_Canty_Rookery_COI/cutadapt/results"
+#dir_results <- "/Users/lauragivens/Desktop/MangroveResults"
 
-ps.nt <- readRDS(paste0(dir_results,"/prune.decontam.ps.nt.troph.rds"))
-ps.mar <- readRDS(paste0(dir_results,"/prune.decontam.ps.troph.rds"))
-ps.bold <- readRDS(paste0(dir_results,"/prune.decontam.ps.bold.rds"))
+ps.og <- readRDS(paste0(dir_results,
+                        "/prune.decontam.combined.wordsize.ps.rds"))
 
-ps.nt <- ps.nt %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
-ps.mar <- ps.mar %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
-ps.bold <- ps.bold %>% subset_samples(Rookery!="Practice" & Rookery !="Blank")
+ps.wbla <- readRDS(paste0(dir_results,
+                        "/prune.decontam.combined.wordsize.ps.keepblanks.rds"))
 
-taxa_nt <- readRDS(paste0(dir_results,"/prune.decontam.ps.nt.troph.rds"))
-taxa_mar <- readRDS(paste0(dir_results,"/taxtable.wtroph.rds"))
-taxa_bold <- readRDS(paste0(dir_results,"/taxtable.bold.rds"))
+#taxa_nt_troph <- readRDS(paste0(dir_results,"/taxtable.v2.nt.wtroph.rds"))
+#tax.combined.df <- readRDS(paste0(dir_results,"/tax.combined.df.rds"))
 
-meta <- readRDS(paste0(dir_results,"/metadata.edit.rds"))
-samplelist <- meta %>% filter(Rookery!="Practice" & Rookery !="Blank")
+taxa.traits.df <- readRDS(paste0(dir_results,"/tax.troph.combined.wordsize.df.rds"))
+taxa.taxize.df <- readRDS(paste0(dir_results,"/taxa_traits_df.rds"))
 ```
+
 Or alternatively,  
-```{r}
+```{r,eval=FALSE}
 load("RData/08_Analysis.RData")
-```
-
-Convert rookery to 0/1  
-```{r}
-samplelist<- samplelist %>% mutate(RookeryBinary = case_when(Rookery=="Rookery" ~ 1,
-                                Rookery!="Rookery" ~ 0),.after=Rookery )
-samplelist <- samplelist %>% mutate(NewName=word(rownames(.),sep="_",end=2))
-
-sample_data(ps.nt) <- samplelist
-sample_data(ps.mar) <- samplelist
-sample_data(ps.bold) <- samplelist
 ```
 
 ```{r}
@@ -60,59 +54,420 @@ ggplot2::theme_set(theme_cowplot() + theme(
 ))
 ```
 
-# Conversions  
-Presence/absence  
+# Update ps  
 ```{r}
-ps.nt.pa <- ps.nt %>% transform_sample_counts(., function(abund) 1*(abund > 0))
-ps.mar.pa <- ps.mar %>% transform_sample_counts(., function(abund) 1*(abund > 0))
-ps.bold.pa <- ps.bold %>% transform_sample_counts(., function(abund) 1*(abund > 0))
-```
-
-Relative abundance  
-```{r}
-ps.nt.rel <- ps.nt %>% transform_sample_counts(.,function(x) x/sum(x) ) 
-ps.mar.rel <- ps.mar %>% transform_sample_counts(.,function(x) x/sum(x) ) 
-ps.bold.rel <- ps.bold %>% transform_sample_counts(.,function(x) x/sum(x) ) 
-```
-
-Vegan-ready  
-```{r}
-tab.nt <- otu_table(ps.nt) %>% as.matrix() %>% as.data.frame() %>% t()
-tab.mar <- otu_table(ps.mar) %>% as.matrix() %>% as.data.frame() %>% t()
-tab.bold <- otu_table(ps.bold) %>% as.matrix() %>% as.data.frame() %>% t()
+samplelist <- as.data.frame(as.matrix(sample_data(ps.og)))
 ```
 
 ```{r}
-tab.nt.pa <- otu_table(ps.nt.pa) %>% as.matrix() %>% as.data.frame() %>% t()
-tab.mar.pa <- otu_table(ps.mar.pa) %>% as.matrix() %>% as.data.frame() %>% t()
-tab.bold.pa <- otu_table(ps.bold.pa) %>% as.matrix() %>% as.data.frame() %>% t()
+ps <- ps.og  %>% 
+  prune_samples(sample_sums(.)>50,.) %>% 
+  subset_samples(Rookery!="Practice") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>% 
+  prune_samples(sample_sums(.)>0,.)
+```
+
+Convert rookery to 0/1  
+```{r}
+samplelist <- as.data.frame(as.matrix(sample_data(ps)))
+samplelist <- samplelist %>% 
+  mutate(RookeryBinary = case_when(Rookery=="Rookery" ~ 1,
+                                   Rookery!="Rookery" ~ 0),
+         .after=Rookery )
+samplelist <- samplelist %>% mutate(NewName=word(rownames(.),sep="_",end=2),
+                                    Trip=factor(Trip,levels=c("Trip 1: Summer 2023","Trip 2: Fall 2023","Trip 3: Winter 2024","Trip 4: Spring 2024")))
+
+sample_data(ps) <- samplelist
+```
+
+Update tax list  
+```{r}
+#tax <- as.data.frame(as.matrix(tax_table(ps)))
+tax <- taxa.taxize.df %>%
+  mutate(Class=case_when(Class=="Actinopterygii" ~ "Actinopteri",
+                         .default=Class))
+rownames(tax) <- tax$seqid
+tax$seqid <- NULL 
+
+tax_table(ps) <- tax_table(as.matrix(tax))
 ```
 
 ```{r}
-tab.nt.rel <- otu_table(ps.nt.rel) %>% as.matrix() %>% as.data.frame() %>% t()
-tab.mar.rel <- otu_table(ps.mar.rel) %>% as.matrix() %>% as.data.frame() %>% t()
-tab.bold.rel <- otu_table(ps.bold.rel) %>% as.matrix() %>% as.data.frame() %>% t()
+tab <- otu_table(ps) %>% as.matrix() %>% as.data.frame() %>% t()
+```
+
+# Dataset manipulations  
+
+## Whole dataset  
+keep taxa seen at least twice in 2 or more samples  
+```{r} 
+ps.prune <- filter_taxa(ps, function(x) sum(x >= 2) >= 2, TRUE)
+```
+
+Dataset manipulations  
+```{r}
+ps.prune.pa <- ps.prune %>% 
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.prune.rel <- ps.prune %>% transform_sample_counts(.,function(x)x/sum(x))
+ps.rel.melt <- psmelt(ps.prune.rel) %>% mutate(Diettroph=as.double(Diettroph))
+
+tab.prune <- otu_table(ps.prune) %>%
+  as.matrix() %>% as.data.frame() %>% t()
+```
+
+```{r,eval=FALSE}
+ps.pa <- ps %>% 
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.rel <- ps %>% 
+  transform_sample_counts(.,function(x) x/sum(x))
+```
+
+## Chordate dataframes   
+```{r}
+ps.ch <-  ps %>% 
+  subset_taxa(.,Phylum=="Chordata") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>%
+  prune_samples(sample_sums(.)>0,.)
+#get_taxa_unique(ps.ch,"Class")
+
+ps.ch.pa <-  ps.ch %>% 
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.ch.rel <-  ps.ch %>% 
+  transform_sample_counts(.,function(x) x/sum(x))
+
+tab.ch <- otu_table(ps.ch) %>%
+  as.matrix() %>% as.data.frame() %>% t()
+
+samplelist.ch <- as.data.frame(as.matrix(sample_data(ps.ch)))
+```
+
+```{r}
+ps.othr <- ps.ch %>% 
+  subset_taxa(Class!="Actinopteri" & Class != "Ascidiacea" & Class!="Elasmobranchii") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>%
+  prune_samples(sample_sums(.)>0,.)
+
+ps.othr.pa <- ps.othr %>% 
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.othr.rel <- ps.othr %>% 
+  transform_sample_counts(.,function(x) x/sum(x))
+
+tab.othr <- otu_table(ps.othr) %>% 
+  as.matrix() %>% as.data.frame() %>% t()
+
+samplelist.othr <- as.data.frame(as.matrix(sample_data(ps.othr)))
+```
+
+## Fish dataframes  
+```{r}
+ps.fsh <- ps.ch %>% 
+  subset_taxa(Class=="Actinopteri" | Class=="Elasmobranchii") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>%
+  prune_samples(sample_sums(.)>0,.)
+
+ps.fsh.pa <- ps.fsh %>% 
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.fsh.rel <- ps.fsh %>% 
+  transform_sample_counts(.,function(x) x/sum(x))
+
+ps.fsh.rel.melt <- ps.fsh.rel %>% psmelt() %>% mutate(Diettroph=as.double(Diettroph))
+
+tab.fsh <- otu_table(ps.fsh.rel) %>%
+  as.matrix() %>% as.data.frame() %>% t()
+
+samplelist.fsh <- as.data.frame(as.matrix(sample_data(ps.fsh)))
+```
+
+## Bird dataframes  
+```{r}
+ps.brd <- ps.ch %>% 
+  subset_taxa(Class=="Aves") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>%
+  prune_samples(sample_sums(.)>0,.)
+
+ps.brd.pa <- ps.brd %>% 
+  transform_sample_counts(., function(abund) 1*(abund > 0))
+
+ps.brd.rel <- ps.brd %>% 
+  transform_sample_counts(.,function(x) x/sum(x))
+
+tab.brd <- otu_table(ps.brd) %>%
+  as.matrix() %>% as.data.frame() %>% t()
+
+samplelist.brd <- as.data.frame(as.matrix(sample_data(ps.brd)))
+```
+
+Compare  
+```{r}
+ps
+ps.prune
+
+ps.ch
+ps.fsh
+ps.othr
+ps.brd
+```
+
+# Summary  
+```{r}
+ps
+```
+```{r}
+ps.bla <- ps.wbla %>% subset_samples(Rookery=="Blank") %>% prune_taxa(taxa_sums(.)>0,.)
+
+ps.bla
+```
+```{r}
+range(sample_sums(ps.bla))
 ```
 
 # Main questions  
 1. does rookery presence have an impact on fish community composition?  
 2. does rookery presence have an impact on whole community composition?  
 3. What species are impacted?  (Commercial/non-commercial; trophic index as well)
+4. how does distance from shore and/or distance from populations impact community composition?  
+5. how does size of protected area correlate?  
 
-# 1. Analysis (Fish)  
-Select only fish BOLD samples (since the mar dataset is already only chordates)
-May need to further subsample this actually
-```{r}
-ps.bold.pa.fsh <- ps.bold.pa %>% subset_taxa(Phylum=="Chordata" & Class!="Ascidiacea" & Class != "Reptilia" & Class != "Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-tab.bold.pa.fsh <- otu_table(ps.bold.pa.fsh) %>% as.matrix() %>% as.data.frame() %>% t()
+# 3. Analysis (Community)   
+
+## Richness  
+No impact of side when looked at by date and site
+```{r rich-samplename,warning=FALSE}
+#plot_richness(ps,x="SampleName",measures = c("Observed","Shannon"),color="Rookery") + geom_boxplot()
+
+sppr <- specnumber(tab)
+
+rich.df <- full_join((samplelist %>% rownames_to_column("names")),
+                     (data.frame(names= names(sppr),spp=sppr))
+                     )
+
+side.comps <- list(c("15-Aug_DCNRL","15-Aug_DCNRW"),
+                    c("15-Aug_DCRL","15-Aug_DCRW" ),
+                    c("15-Aug_HINRL","15-Aug_HINRW"),
+                    c("15-Aug_HIRL","15-Aug_HIRW" ),
+                    c("17-Aug_TANRL","17-Aug_TANRW"),
+                    c("17-Aug_TARL","17-Aug_TARW" ),
+                    c("22-Feb_DCNRL","22-Feb_DCNRW"),
+                    c("22-Feb_DCRL","22-Feb_DCRW"),
+                    c("22-Feb_TANRL","22-Feb_TANRW"),
+                    c("22-Feb_TARL","22-Feb_TARW" ),
+                   c("23-Feb_HINRL","23-Feb_HINRW" ),
+                   c("23-Feb_HIRL","23-Feb_HIRW"),
+                   c("23-May_DCNRL","23-May_DCNRW"),
+                   c("23-May_DCRL","23-May_DCRW"),
+                   c("23-May_HINRL","23-May_HINRW"),
+                   c("23-May_HIRL","23-May_HIRW" ),
+                   c("23-May_TANRL","23-May_TANRW"),
+                   c("23-May_TARL","23-May_TARW" ),
+                   c("23-Nov_DCNRL","23-Nov_DCNRW"),
+                   c("23-Nov_DCRL","23-Nov_DCRW"),
+                   c("23-Nov_HINRL","23-Nov_HINRW"),
+                   c("23-Nov_HIRL","23-Nov_HIRW" ),
+                   c("23-Nov_TANRL","23-Nov_TANRW"),
+                   c("23-Nov_TARL","23-Nov_TARW" )
+                    )
+
+
+ggpubr::ggboxplot(rich.df,x="NewName",y="spp",
+          color="Rookery",add="jitter") +
+  #facet_wrap(~Trip,scales="free") +
+  ggpubr::stat_compare_means(comparisons=side.comps,
+                    # symnum.args = list(
+                    #   cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+                    #   symbols = c("****", "***", "**", "*", "ns")),
+                     #hide.ns=TRUE
+                     ) + theme(axis.text.x = element_text(angle=90))
 ```
 
-## Jaccard distance  
+Significant impact of side at Turneffe
 ```{r}
-jacc.mar.dist <- distance(ps.mar.pa,method='jaccard')
+ggpubr::ggboxplot(rich.df,x="SampleName_Short",y="spp",
+          color="Rookery",add="jitter") +
+  #facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(comparisons=list(c("DCNRL","DCNRW"),
+                                              c("DCRL","DCRW"),
+                                              c("HINRL","HINRW"),
+                                              c("HIRL","HIRW"),
+                                              c("TANRL","TANRW"),
+                                              c("TARL","TARW")
+                                              ),
+                    # symnum.args = list(
+                    #   cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+                    #   symbols = c("****", "***", "**", "*", "ns")),
+                     #hide.ns=TRUE
+                     ) + 
+  theme(axis.text.x = element_text(angle=90))
+#ggsave("Figures/richness.boxplot.side.png",width=7,height=5)
 ```
+
 ```{r}
-jacc.bold.fsh.dist <- distance(ps.bold.pa.fsh,method='jaccard')
+ggpubr::ggboxplot(rich.df,x="Rookery",y="spp",
+          color="Site",add="jitter") +
+  facet_wrap(~Trip,scales="free") +
+  ggpubr::stat_compare_means(comparisons=list(c("Rookery","Non-rookery")),
+                    # symnum.args = list(
+                    #   cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+                    #   symbols = c("****", "***", "**", "*", "ns")),
+                     #hide.ns=TRUE
+                     ) + theme(axis.text.x = element_text(angle=90))
+
+ggpubr::ggboxplot(rich.df,,x="Trip",y="spp",
+          color="Rookery",add="jitter") +
+  facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(
+    aes(group=Rookery),
+    #comparisons=list(c("Rookery","Non-rookery")),
+    method="wilcox.test",
+    label="p.signif",
+    symnum.args = list(
+      cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+      symbols = c("p < 0.0001", "p < 0.001", "p < 0.01", "p < 0.05", "ns")),
+    vjust=0,
+    hide.ns=TRUE
+    ) + theme(axis.text.x = element_text(angle=45,hjust=1))
+
+#ggsave("Figures/richness.boxplot.rookery.png",width=7,height = 10)
+```
+
+## bray dissimilarity
+```{r}
+bray.dist <- distance(ps.prune.rel,method='bray')
+```
+
+### distance-based Redundancy analysis   
+We want to know how much variation in community composition can be explained by the environmental variables we measured.  
+To do that, we are going to use a distance-based redundancy analysis (db-RDA) to identify the significant variables. (Different from a regular RDA because it can use non-Euclidean dissimilarity indices - if you use a Euclidean index, you will get the same result as rda() ).   
+
+Make base rda  
+```{r}
+rda.0 <- dbrda(bray.dist~1, data=samplelist)
+```
+
+Add environmental variables  
+```{r}
+rda.bray <- dbrda(bray.dist ~ RookeryBinary + Site + Month + Side, samplelist)
+
+perm <-how(nperm=999)
+setBlocks(perm) <- with(samplelist,Site)
+```
+
+Calculate significance  
+```{r}
+step <- vegan::anova.cca(rda.bray,permutations=perm,by='terms')
+```
+
+```{r}
+step
+```
+
+#### Visualize  
+```{r}
+plot_ordination(ps.prune.rel,rda.bray,
+                color="Rookery") + 
+     #          color="Rookery") + 
+  #facet_wrap(~Month) + 
+  #facet_wrap(~Site) +
+  facet_grid(Site~Month) +
+  stat_ellipse()
+#ggsave("Figures/rda.site.month.rookery.png",width=7,height=5)
+```
+
+```{r}
+plot_ordination(ps.prune.rel,rda.bray,
+                color="Site",shape="Site") + 
+  facet_wrap(~Month) +
+  stat_ellipse()
+#ggsave("Figures/rda.site.month.png",width=7,height=5)
+```
+
+### PERMANOVA  
+```{r}
+adonis.bray <- vegan::adonis2(bray.dist~RookeryBinary+Month+Side,
+                              samplelist,
+                              perm=perm,by='terms')
+adonis.bray
+```
+
+### Trophic index  
+```{r}
+# if scale="area" (default), all violins have the same area (before trimming the tails). If "count", areas are scaled proportionally to the number of observations. If "width", all violins have the same maximum width.
+
+ps.rel.melt %>% filter(Abundance > 0) %>%
+  ggplot(.,aes(x=Rookery,y=Diettroph,
+               #color=Side
+               )) + 
+  facet_grid(Trip~Site) +
+    geom_violin(na.rm=TRUE,
+                adjust=0.5,
+                #draw_quantiles = c(0.25,0.75),
+                #scale="width",
+                scale="count" # Scale maximum width proportional to sample size: 
+                ) + geom_jitter(height = 0, width = 0.05,alpha=0.5) + 
+  geom_boxplot(width=0.1) + theme_bw()
+
+#ggsave("Figures/tlevel.trip.site.side.png",width=10,height=7)
+#ggsave("Figures/tlevel.trip.site.png",width=10,height=7)
+```
+
+# 2. Analysis (Fish)  
+
+## Richness  
+```{r fshrich-samplename,warning=FALSE}
+#plot_richness(ps,x="SampleName",measures = c("Observed","Shannon"),color="Rookery") + geom_boxplot()
+
+fsh.sppr <- specnumber(tab.fsh)
+
+rich.df.fsh <- full_join((samplelist.fsh %>% rownames_to_column("names")),(data.frame(names= names(fsh.sppr),spp=fsh.sppr))) %>% mutate(Trip=factor(Trip,levels=c("Trip 1: Summer 2023","Trip 2: Fall 2023","Trip 3: Winter 2024","Trip 4: Spring 2024")))
+```
+
+```{r}
+ggpubr::ggboxplot(rich.df.fsh,x="Trip",y="spp",
+          #color="Rookery",
+          add="jitter") +
+  facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(
+    aes(group=Rookery),
+    #comparisons=list(c("Rookery","Non-rookery")),
+    method="wilcox.test",
+    label="p.signif",
+    symnum.args = list(
+      cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+      symbols = c("p < 0.0001", "p < 0.001", "p < 0.01", "p < 0.05", "ns")),
+    vjust=0,
+    hide.ns=TRUE
+    ) + 
+  theme(axis.text.x = element_text(angle=45,hjust=1))
+#ggsave("Figures/fsh.richness.boxplot.site.png",width=7,height=5)
+```
+
+```{r}
+ggpubr::ggboxplot(rich.df.fsh,x="SampleName_Short",y="spp",
+          color="Rookery",add="jitter") +
+  #facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(comparisons=list(c("DCNRL","DCNRW"),
+                                              c("DCRL","DCRW"),
+                                              c("HINRL","HINRW"),
+                                              c("HIRL","HIRW"),
+                                              c("TANRL","TANRW"),
+                                              c("TARL","TARW")
+                                              ),
+                    # symnum.args = list(
+                    #   cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+                    #   symbols = c("****", "***", "**", "*", "ns")),
+                     #hide.ns=TRUE
+                     ) + 
+  theme(axis.text.x = element_text(angle=90))
+#ggsave("Figures/fsh.richness.boxplot.side.png",width=7,height=5)
+```
+
+## bray dissimilarity    
+```{r}
+bray.fsh.dist <- distance(ps.fsh.rel,method='bray')
 ```
 
 ### distance-based Redundancy analysis   
@@ -122,414 +477,380 @@ To do that, we are going to use a distance-based redundancy analysis (db-RDA) to
 Make base rda  
 ```{r}
 #using phyloseq
-#rda.0.mar <- ordinate(ps.mar.pa,distance=jacc.mar.dist)
-#rda.0.bold <- ordinate(ps.bold.pa.fsh,distance=jacc.bold.dist)
+#rda.0 <- ordinate(ps.fsh.rel,distance=bray.dist)
 
 #using vegan
-rda.0.mar <- dbrda(tab.mar.pa~1,data=samplelist)
-rda.0.bold.fsh <- dbrda(tab.bold.pa.fsh~1,data=samplelist)
+rda.0.fsh <- dbrda(tab.fsh~1,data=samplelist.fsh)
 ```
 
 Add environmental variables  
 ```{r}
 #using phyloseq  
-#rda.jacc.mar <- ordinate(ps.mar.pa,method="RDA",distance=jacc.mar.dist,formula=Site+Month+Side+RookeryBinary)
-#rda.jacc.bold.fsh <- ordinate(ps.bold.pa.fsh,method="RDA",distance=jacc.bold.fsh.dist,formula=Site+Month+Side+RookeryBinary)
+#rda.bray.fsh <- ordinate(ps.fsh.rel,method="RDA",distance=bray.fsh.dist,formula=Site+Month+Side+RookeryBinary)
 
 #using vegan 
-rda.jacc.mar <- dbrda(jacc.mar.dist ~ Site+Month+Side+RookeryBinary,samplelist)
-rda.jacc.bold.fsh <- dbrda(jacc.bold.fsh.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.fsh))))
+rda.bray.fsh <- dbrda(bray.fsh.dist ~ RookeryBinary + Site + Month + Side,
+                      samplelist.fsh)
 ```
 
 Calculate significance  
 ```{r}
-#step.mar <- ordistep(rda.0.mar,scope=formula(rda.jacc.mar),perm.max=1000)
-#step.bold.fsh <- ordistep(rda.0.bold.fsh,scope=formula(rda.jacc.bold.fsh),perm.max=1000)
+perm.fsh <-how(nperm=999)
+setBlocks(perm.fsh) <- with(samplelist.fsh,Site)
 
-step.mar <- vegan::anova.cca(rda.jacc.mar,permutations=1000,by='terms') #anova.cca performs an ANOVA like permutation test for RDA to assess the significance of constraints  
-step.bold.fsh <- vegan::anova.cca(rda.jacc.bold.fsh,permutations=1000,by='terms')
+#step.fsh <- ordistep(rda.0.fsh,scope=formula(rda.bray.fsh),perm.max=1000)
+
+ #anova.cca performs an ANOVA like permutation test for RDA to assess the significance of constraints  
+step.fsh <- vegan::anova.cca(rda.bray.fsh,permutations=perm.fsh,by='terms')
 ```
-
 ```{r}
-step.mar
-```
-
-```{r}
-step.bold.fsh
+step.fsh
 ```
 
 #### Visualize  
 ```{r}
-plot_ordination(ps.mar.pa,rda.jacc.mar,color="Rookery",shape="Side") + facet_wrap(~Site)
+plot_ordination(ps.fsh.rel,rda.bray.fsh,
+                color="Site") +
+  facet_grid(~Trip) + stat_ellipse()
+#ggsave("Figures/fsh.rda.bray.site.png",width=7,height=5)
+
+plot_ordination(ps.fsh.rel,rda.bray.fsh,
+                color="Rookery") +
+  facet_grid(Trip~Site) + 
+  stat_ellipse()
+#ggsave("Figures/fsh.rda.bray.rookery.site.png",width=7,height=5)
+```
+
+### Statistical Significance   
+```{r}
+adonis.bray.fsh <- vegan::adonis2(bray.fsh.dist~RookeryBinary+Month+Side,
+                                  samplelist.fsh,
+                                  perm=1000,by='terms',permutations=perm.fsh)
+adonis.bray.fsh
+```
+
+Kruskal test - difference in abundance between rookery/non-rookery at each caye  
+```{r}
+ps.prune.rel.fsh.melt <- psmelt(ps.fsh.rel)
 ```
 
 ```{r}
-plot_ordination(ps.bold.pa.fsh,rda.jacc.bold.fsh,color="Rookery",shape="Side") + facet_wrap(~Site)
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.fsh.melt %>% filter(Site=="Hicks Caye"))
+             )
+
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.fsh.melt %>% filter(Site=="Turneffe Atoll"))
+             )
+
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.fsh.melt %>% filter(Site=="Drowned Caye"))
+             )
+```
+
+# 3a. Analysis (non-fish chordates)    
+
+## Richness  
+```{r othrrich-samplename,warning=FALSE}
+othr.sppr <- specnumber(tab.othr)
+
+rich.df.othr <- full_join((samplelist.othr %>% rownames_to_column("names")),(data.frame(names= names(othr.sppr),spp=othr.sppr))) %>% mutate(Trip=factor(Trip,levels=c("Trip 1: Summer 2023","Trip 2: Fall 2023","Trip 3: Winter 2024","Trip 4: Spring 2024")))
 ```
 
 ```{r}
-arrow_map_rda = aes(xend = dbRDA1, 
-                yend = dbRDA2,
-                x = 0, y = 0, 
-                shape = NULL, color = NULL,label=labels
-                )
-label_map_rda = aes(x = 1.5 * dbRDA1, 
-                y = 1.5 * dbRDA2, 
-                shape = NULL, color = NULL,label=labels
-                )
-arrowhead = arrow(length = unit(0.03, "npc"))
-
-# get scores from rda  
-sigscrs_rda_mar <- scores(rda.jacc.mar,display="bp") %>% as.data.frame() %>% filter(., abs(dbRDA1)>0.05 & abs(dbRDA2)>0.05)
-# add labels  
-arrowdf_rda_mar <- data.frame(labels = rownames(sigscrs_rda_mar), sigscrs_rda_mar)
-
-plot_ordination(ps.mar.pa,rda.jacc.mar) + 
-  geom_point(aes(color=Rookery)) + 
-  geom_segment(arrow_map_rda, data=arrowdf_rda_mar,arrow=arrowhead) + #add vector line  
-  #geom_text(label_map_rda, size = 4, data = arrowdf_rda_mar, color = "black")  #add label 
-    ggrepel::geom_text_repel(label_map_rda,data = arrowdf_rda_mar, 
-                           cex = 4, direction = "both", 
-                           segment.size = 0.25,color="black") #+ facet_wrap(~Site)
+ggpubr::ggboxplot(rich.df.othr,x="Trip",y="spp",
+          color="Rookery",add="jitter") +
+  facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(
+    aes(group=Rookery),
+    #comparisons=list(c("Rookery","Non-rookery")),
+    method="wilcox.test",
+    label="p.signif",
+    symnum.args = list(
+      cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+      symbols = c("p < 0.0001", "p < 0.001", "p < 0.01", "p < 0.05", "ns")),
+    vjust=0,
+    hide.ns=TRUE
+    ) + 
+  theme(axis.text.x = element_text(angle=45,hjust=1))
+#ggsave("Figures/othr.richness.boxplot.site.png",width=7,height=5)
 ```
 
-### PERMANOVA  
 ```{r}
-adonis.jacc.mar <- vegan::adonis2(jacc.mar.dist~Site+Month+Side+RookeryBinary,samplelist,perm=1000,by='terms')
-adonis.jacc.mar
-
-
-adonis.jacc.bold.fsh <- vegan::adonis2(jacc.bold.fsh.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.fsh))),perm=1000,by='terms')
-adonis.jacc.bold.fsh
+ggpubr::ggboxplot(rich.df.othr,x="SampleName_Short",y="spp",
+          color="Rookery",add="jitter") +
+  #facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(comparisons=list(c("DCNRL","DCNRW"),
+                                              c("DCRL","DCRW"),
+                                              c("HINRL","HINRW"),
+                                              c("HIRL","HIRW"),
+                                              c("TANRL","TANRW"),
+                                              c("TARL","TARW")
+                                              ),
+                    # symnum.args = list(
+                    #   cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+                    #   symbols = c("****", "***", "**", "*", "ns")),
+                     #hide.ns=TRUE
+                     ) + 
+  theme(axis.text.x = element_text(angle=90))
+#ggsave("Figures/othr.richness.boxplot.side.png",width=7,height=5)
 ```
 
-### test strata  
+## bray dissimilarity  
 ```{r}
-perm.OR <-how(nperm=999)
-setBlocks(perm.OR) <- with(samplelist,Site)
-# vegan::adonis2(obs.richness~Location*Season,permutations=perm.OR,meta.subset.m)
+bray.othr.dist <- distance(ps.othr.rel,method='bray')
 
- vegan::adonis2(jacc.mar.dist~Site+Side+RookeryBinary,samplelist,by='terms',permutations=perm.OR)
+rda.bray.othr <- dbrda(bray.othr.dist ~ RookeryBinary+Site+Month+Side,
+                       samplelist.othr)
+
+perm.othr <-how(nperm=999)
+setBlocks(perm.othr) <- with(samplelist.othr,Site)
+
+adonis.bray.othr <- vegan::adonis2(bray.othr.dist~RookeryBinary+Month+Side,
+                                   samplelist.othr,
+                                   permutations=perm.othr,by='terms')
+adonis.bray.othr
 ```
 
-## GLM  
+### db-RDA  
+Make base rda  
+```{r}
+#using phyloseq
+#rda.0 <- ordinate(ps.othr.rel,distance=bray.dist)
+
+#using vegan
+rda.0.othr <- dbrda(tab.othr~1,data=samplelist.othr)
+```
+
+Add environmental variables  
+```{r}
+#using phyloseq  
+#rda.bray.othr <- ordinate(ps.othr.rel,method="RDA",distance=bray.othr.dist,formula=Site+Month+Side+RookeryBinary)
+
+#using vegan 
+rda.bray.othr <- dbrda(bray.othr.dist ~ RookeryBinary + Site + Month + Side,
+                      samplelist.othr)
+```
+
+Calculate significance  
+```{r}
+perm.othr <-how(nperm=999)
+setBlocks(perm.othr) <- with(samplelist.othr,Site)
+
+#step.othr <- ordistep(rda.0.othr,scope=formula(rda.bray.othr),perm.max=1000)
+
+ #anova.cca performs an ANOVA like permutation test for RDA to assess the significance of constraints  
+step.othr <- vegan::anova.cca(rda.bray.othr,permutations=perm.othr,by='terms')
+```
+```{r}
+step.othr
+```
+
+### Visualize  
+```{r}
+plot_ordination(ps.othr.rel,rda.bray.othr,
+                color="Site") +
+  facet_grid(~Trip) + stat_ellipse()
+#ggsave("Figures/othr.rda.bray.site.png",width=7,height=5)
+
+plot_ordination(ps.othr.rel,rda.bray.othr,
+                color="Rookery") +
+  facet_grid(Trip~Site) + 
+  stat_ellipse()
+#ggsave("Figures/othr.rda.bray.rookery.site.png",width=7,height=5)
+```
+
+### Statistical Significance  
+PERMANOVA  
+```{r}
+adonis.bray.othr <- vegan::adonis2(bray.othr.dist~RookeryBinary+Month+Side,
+                                  samplelist.othr,
+                                  perm=perm.othr,by='terms')
+adonis.bray.othr
+```
+
+Kruskal test - difference in abundance between rookery/non-rookery at each caye  
+```{r}
+ps.prune.rel.othr.melt <- psmelt(ps.othr.rel)
+```
+
+```{r}
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.othr.melt %>% filter(Site=="Hicks Caye"))
+             )
+
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.othr.melt %>% filter(Site=="Turneffe Atoll"))
+             )
+
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.othr.melt %>% filter(Site=="Drowned Caye"))
+             )
+```
+
+
+# 3b. Birds specifically  
+
+## Richness  
+```{r brdrich-samplename,warning=FALSE}
+brd.sppr <- specnumber(tab.brd)
+
+rich.df.brd <- full_join((samplelist.brd %>% rownames_to_column("names")),(data.frame(names= names(brd.sppr),spp=brd.sppr))) %>% mutate(Trip=factor(Trip,levels=c("Trip 1: Summer 2023","Trip 2: Fall 2023","Trip 3: Winter 2024","Trip 4: Spring 2024")))
+```
+
+```{r}
+ggpubr::ggboxplot(rich.df.brd,x="Trip",y="spp",
+          color="Rookery",add="jitter") +
+  facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(
+    aes(group=Rookery),
+    #comparisons=list(c("Rookery","Non-rookery")),
+    method="wilcox.test",
+    label="p.signif",
+    symnum.args = list(
+      cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+      symbols = c("p < 0.0001", "p < 0.001", "p < 0.01", "p < 0.05", "ns")),
+    vjust=0,
+    #hide.ns=TRUE
+    ) + 
+  theme(axis.text.x = element_text(angle=45,hjust=1))
+#ggsave("Figures/brd.richness.boxplot.site.png",width=7,height=5)
+```
+
+```{r}
+ggpubr::ggboxplot(rich.df.brd,x="SampleName_Short",y="spp",
+          color="Rookery",add="jitter") +
+  #facet_wrap(~Site,scales="free") +
+  ggpubr::stat_compare_means(comparisons=list(c("DCNRL","DCNRW"),
+                                              c("DCRL","DCRW"),
+                                              c("HINRL","HINRW"),
+                                              c("HIRL","HIRW"),
+                                              c("TANRL","TANRW"),
+                                              c("TARL","TARW")
+                                              ),
+                    # symnum.args = list(
+                    #   cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, Inf), 
+                    #   symbols = c("****", "***", "**", "*", "ns")),
+                     #hide.ns=TRUE
+                     ) + 
+  theme(axis.text.x = element_text(angle=90))
+#ggsave("Figures/brd.richness.boxplot.side.png",width=7,height=5)
+```
+
+## bray dissimilarity  
+```{r}
+bray.brd.dist <- distance(ps.brd.rel,method='bray')
+```
+
+### db-RDA  
+Make base rda  
+```{r}
+#using phyloseq
+#rda.0 <- ordinate(ps.brd.rel,distance=bray.dist)
+
+#using vegan
+rda.0.brd <- dbrda(tab.brd~1,data=samplelist.brd)
+```
+
+Add environmental variables  
+```{r}
+#using phyloseq  
+#rda.bray.brd <- ordinate(ps.brd.rel,method="RDA",distance=bray.brd.dist,formula=Site+Month+Side+RookeryBinary)
+
+#using vegan 
+rda.bray.brd <- dbrda(bray.brd.dist ~ RookeryBinary + Site + Month + Side,
+                      samplelist.brd)
+```
+
+Calculate significance  
+```{r}
+perm.brd <-how(nperm=999)
+setBlocks(perm.brd) <- with(samplelist.brd,Site)
+
+#step.brd <- ordistep(rda.0.brd,scope=formula(rda.bray.brd),perm.max=1000)
+
+ #anova.cca performs an ANOVA like permutation test for RDA to assess the significance of constraints  
+step.brd <- vegan::anova.cca(rda.bray.brd,permutations=perm.brd,by='terms')
+```
+```{r}
+step.brd
+```
+
+### Visualize  
+```{r}
+plot_ordination(ps.brd.rel,rda.bray.brd,
+                color="Site") +
+  facet_grid(~Trip) #+ stat_ellipse()
+#ggsave("Figures/brd.rda.bray.site.png",width=7,height=5)
+
+plot_ordination(ps.brd.rel,rda.bray.brd,
+                color="Rookery") +
+  facet_grid(Trip~Site) #+ stat_ellipse()
+#ggsave("Figures/brd.rda.bray.rookery.site.png",width=7,height=5)
+```
+
+### Statistical Significance   
+```{r}
+adonis.bray.brd <- vegan::adonis2(bray.brd.dist~RookeryBinary+Month+Side,
+                                  samplelist.brd,
+                                  perm=perm.brd,by='terms')
+adonis.bray.brd
+```
+
+Kruskal test - difference in abundance between rookery/non-rookery at each caye  
+```{r}
+ps.prune.rel.brd.melt <- psmelt(ps.brd.rel)
+```
+
+```{r}
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.brd.melt %>% filter(Site=="Hicks Caye"))
+             )
+
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.brd.melt %>% filter(Site=="Turneffe Atoll"))
+             )
+
+kruskal.test(Abundance ~ Rookery,
+             data=(ps.prune.rel.brd.melt %>% filter(Site=="Drowned Caye"))
+             )
+```
+
+# Linear model   
+
+## Whole community  
+```{r}
+rel.model1 <- lmer(Abundance ~ Diettroph*Rookery + (1|Site) + (1|Month), data = ps.rel.melt)
+rel.model2 <- lmer(Abundance ~ Diettroph + (1|Site) + (1|Month), data = ps.rel.melt)
+rel.model3 <- lmer(Abundance ~ Diettroph + (1|Month) , data = ps.rel.melt)
+
+anova(rel.model1,rel.model2,rel.model3)
+
+summary(rel.model1)
+# help("pvalues",package="lme4")
+car::Anova(rel.model1) #calculates type-II or tyle-III analysis of variance tables for model objects produced by..lmer
+lmerTest::ranova(rel.model1) #tests for significance of random effects
+```
+
+## Fish  
 Want to know if any specific fish species has a response to rookery presence  
 Want to know if there is a difference between trophic composition  
 poisson distribution because we essentially have count data where the response variable = number of events occurring in a specific timeframe  
 https://medium.com/@sahin.samia/a-comprehensive-introduction-to-generalized-linear-models-fd773d460c1d
 
-Trophic index ~ Rookery + Month + Side + Site 
-```{r}
-glm()
-```
-
 Does trophic diversity differ between site types?  
 ```{r}
-ps.mar.rel.melt <- psmelt(ps.mar.rel) 
-
-lmer(Abundance ~ Trophic.Round + Rookery + Month + Side + (1|Site) , data = ps.mar.rel.melt)
-#singular fit warning 
-```
-
-# 2. Analysis (non-fish chordates)    
-```{r}
-get_taxa_unique(ps.bold.pa %>% subset_taxa(Phylum=="Chordata"),"Class")
-get_taxa_unique(ps.nt.pa %>% subset_taxa(Phylum=="Chordata"),"Class")
-```
-
-Presence/absence, nt database  
-```{r}
-ps.nt.pa.othr <- ps.nt.pa  %>% subset_taxa(Phylum=="Chordata" & Class!="Actinopteri" & Class != "Ascidiacea") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-tab.nt.pa.othr <- otu_table(ps.nt.pa.othr) %>% as.matrix() %>% as.data.frame() %>% t()
-
-jacc.nt.othr.dist <- distance(ps.nt.pa.othr,method='jaccard')
-
-rda.jacc.nt.othr <- dbrda(jacc.nt.othr.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.nt.pa.othr))))
-
-
-perm.nt <-how(nperm=999)
-setBlocks(perm.nt) <- with(as.data.frame(as.matrix(sample_data(ps.nt.pa.othr))),Site)
-
-adonis.jacc.nt.othr <- vegan::adonis2(jacc.nt.othr.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.nt.pa.othr))),permutations=perm.nt,by='terms')
-adonis.jacc.nt.othr
-
-#without blocks
-#vegan::adonis2(jacc.nt.othr.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.nt.pa.othr))),permutations=1000,by='terms')
-
-plot_ordination(ps.nt.pa.othr,rda.jacc.nt.othr,color="Rookery",shape="Month") + facet_wrap(~Site)
-```
-
-```{r}
-plot_ordination(ps.nt.pa.othr,rda.jacc.nt.othr,color="Rookery",shape="Month") + facet_wrap(~Site)
-```
-
-Presence/absence, bold database  
-```{r}
-ps.bold.pa.othr <- ps.bold.pa  %>% subset_taxa(Phylum=="Chordata" & Class!="Actinopterygii" & Class != "Ascidiacea") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-tab.bold.pa.othr <- otu_table(ps.bold.pa.othr) %>% as.matrix() %>% as.data.frame() %>% t()
-
-jacc.bold.othr.dist <- distance(ps.bold.pa.othr,method='jaccard')
-
-rda.jacc.bold.othr <- dbrda(jacc.bold.othr.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.othr))))
-
-
-perm.othr <-how(nperm=999)
-setBlocks(perm.othr) <- with(as.data.frame(as.matrix(sample_data(ps.bold.pa.othr))),Site)
-
-adonis.jacc.bold.othr <- vegan::adonis2(jacc.bold.othr.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.othr))),permutations=perm.othr,by='terms')
-adonis.jacc.bold.othr
-#without blocks
-#vegan::adonis2(jacc.bold.othr.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.othr))),permutations=1000,by='terms')
-
-plot_ordination(ps.bold.pa.othr,rda.jacc.bold.othr,color="Rookery",shape="Month") + facet_wrap(~Site)
-```
-
-```{r}
-ps.nt.pa.othr.melt <- psmelt(ps.nt.pa.othr)
-```
-
-```{r}
-kruskal.test(ps.nt.pa.othr.melt$Abundance ~ ps.nt.pa.othr.melt$Rookery)
-```
-
-### Birds specifically  
-Relative abundance, nt database  
-```{r}
-ps.nt.rel.brd <- ps.nt.rel  %>% subset_taxa(Class=="Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-tab.nt.rel.brd <- otu_table(ps.nt.rel.brd) %>% as.matrix() %>% as.data.frame() %>% t()
-
-bray.nt.brd.dist <- distance(ps.nt.rel.brd,method='bray')
-
-rda.bray.nt.brd <- dbrda(bray.nt.brd.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.nt.rel.brd))))
-
-adonis.bray.nt.brd <- vegan::adonis2(bray.nt.brd.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.nt.rel.brd))),perm=1000,by='terms')
-adonis.bray.nt.brd
-
-perm.nt.brd <-how(nperm=999)
-setBlocks(perm.nt.brd) <- with(as.data.frame(as.matrix(sample_data(ps.nt.rel.brd))),Month)
- vegan::adonis2(bray.nt.brd.dist~Site+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.nt.rel.brd))),by='terms',permutations=perm.nt.brd)
-
-plot_ordination(ps.nt.rel.brd,rda.bray.nt.brd,color="Rookery",shape="Month") + facet_wrap(~Site) + labs(title="Avian occurrences",subtitle="db-RDA on bray distance calculated with relative abundance dataset",caption="Taxonomy annotated with NCBI nt database")
-```
-
-pa, bold 
-```{r}
-ps.bold.pa.brd <- ps.bold.pa  %>% subset_taxa(Class=="Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-ps.bold.pa.brd.melt <- psmelt(ps.bold.pa.brd)
-```
-```{r}
-kruskal.test(ps.bold.pa.brd.melt$Abundance ~ ps.bold.pa.brd.melt$Rookery)
-```
-
-Relative abundance, bold database  
-```{r}
-ps.bold.rel.brd <- ps.bold.rel  %>% subset_taxa(Class=="Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-tab.bold.rel.brd <- otu_table(ps.bold.rel.brd) %>% as.matrix() %>% as.data.frame() %>% t()
-
-bray.bold.brd.dist <- distance(ps.bold.rel.brd,method='bray')
-
-rda.bray.bold.brd <- dbrda(bray.bold.brd.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))))
-
-adonis.bray.bold.brd <- vegan::adonis2(bray.bold.brd.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))),perm=1000,by='terms')
-adonis.bray.bold.brd
-
-perm.brd <-how(nperm=999)
-setBlocks(perm.brd) <- with(as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))),Month)
- vegan::adonis2(bray.bold.brd.dist~Site+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.rel.brd))),by='terms',permutations=perm.brd)
-
-plot_ordination(ps.bold.rel.brd,rda.bray.bold.brd,color="Rookery",shape="Side") + facet_wrap(~Site)
-```
-
-Presence/absence, bold database  
-```{r}
-ps.bold.pa.brd <- ps.bold.pa  %>% subset_taxa(Class=="Aves") %>% prune_taxa(taxa_sums(.)>0,.) %>% prune_samples(sample_sums(.)>0,.)
-tab.bold.pa.brd <- otu_table(ps.bold.pa.brd) %>% as.matrix() %>% as.data.frame() %>% t()
-
-bray.bold.pa.brd.dist <- distance(ps.bold.pa.brd,method='bray')
-
-rda.bray.bold.pa.brd <- dbrda(bray.bold.pa.brd.dist ~ Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.brd))))
-
-adonis.bray.pa.bold.brd <- vegan::adonis2(bray.bold.pa.brd.dist~Site+Month+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.brd))),perm=1000,by='terms')
-adonis.bray.bold.brd
-
- vegan::adonis2(bray.bold.pa.brd.dist~Site+Side+RookeryBinary,as.data.frame(as.matrix(sample_data(ps.bold.pa.brd))),by='terms',permutations=perm.brd)
-
-plot_ordination(ps.bold.pa.brd,rda.bray.bold.brd,color="Rookery",shape="Side") + facet_wrap(~Site)
-```
-
-#### GLM  
-```{r}
-ps.nt.rel.brd.melt <- psmelt(ps.nt.rel.brd)
-head(ps.nt.rel.brd.melt)
-glm(Abundance~Species*RookeryBinary+Site+Month+Side,data=ps.nt.rel.brd.melt,family=gaussian)
-
-#lmer(Abundance~Species*RookeryBinary+(1|Site)+Month+Side,data=ps.nt.rel.brd.melt)
-```
-
-```{r}
-kruskal.test(ps.nt.rel.brd.melt$Abundance ~ ps.nt.rel.brd.melt$Rookery)
-```
-
-# 3. Analysis (Community)   
-## Jaccard distance  
-```{r}
-jacc.nt.dist <- distance(ps.nt.pa,method='jaccard')
-jacc.bold.dist <- distance(ps.bold.pa,method='jaccard')
-```
-
-### distance-based Redundancy analysis   
-We want to know how much variation in community composition can be explained by the environmental variables we measured.  
-To do that, we are going to use a distance-based redundancy analysis (db-RDA) to identify the significant variables. (Different from a regular RDA because it can use non-Euclidean dissimilarity indices - if you use a Euclidean index, you will get the same result as rda() ).   
-
-Make base rda  
-```{r}
-rda.0.bold <- dbrda(tab.bold.pa~1,data=samplelist)
-```
-
-Add environmental variables  
-```{r}
-rda.jacc.nt <- dbrda(jacc.nt.dist ~ Site+Month+Side+RookeryBinary,samplelist)
-rda.jacc.bold <- dbrda(jacc.bold.dist ~ Site+Month+Side+RookeryBinary,samplelist)
-```
-
-Calculate significance  
-```{r}
-step.nt <- vegan::anova.cca(rda.jacc.nt,permutations=1000,by='terms')
-step.bold <- vegan::anova.cca(rda.jacc.bold,permutations=1000,by='terms')
-```
-
-```{r}
-step.nt
-```
-
-```{r}
-step.bold
-```
-
-#### Visualize  
-```{r}
-plot_ordination(ps.nt.pa,rda.jacc.nt,color="Rookery",shape="Month") + facet_wrap(~Site)# + stat_ellipse()
-```
-
-```{r}
-plot_ordination(ps.nt.pa,rda.jacc.nt,color="Month",shape="Rookery") + facet_wrap(~Site) 
-```
-
-```{r}
-plot_ordination(ps.bold.pa,rda.jacc.bold,color="Month",shape="Rookery") + facet_wrap(~Site) 
-```
-
-### PERMANOVA  
-```{r}
-adonis.jacc.nt <- vegan::adonis2(jacc.nt.dist~Site+Month+Side+RookeryBinary,samplelist,perm=1000,by='terms')
-adonis.jacc.nt
-```
-with strata
-```{r}
-perm.nt <-how(nperm=999)
-setBlocks(perm.nt) <- with(samplelist,Site)
-
-vegan::adonis2(jacc.nt.dist~Site+Month+Side+RookeryBinary,samplelist,perm=perm.nt,by='terms')
-```
-
-```{r}
-adonis.jacc.bold <- vegan::adonis2(jacc.bold.dist~Site+Month+Side+RookeryBinary,samplelist,perm=1000,by='terms')
-adonis.jacc.bold
-```
-with strata
-```{r}
-perm.bld <-how(nperm=999)
-setBlocks(perm.bld) <- with(samplelist,Site)
-
-vegan::adonis2(jacc.bold.dist~Site+Month+Side+RookeryBinary,samplelist,perm=perm.bld,by='terms')
-```
-## GLM  
-
-
-
-# 4. Heatmap  
-
-## 4b. fish  
-```{r}
-mean_cutoff = 0.01
-mean_test = function(x) {
-  mean(x) >= mean_cutoff
-}
-
-melt.mar.rel <- ps.mar.rel %>% tax_glom(.,"Genus",NArm=FALSE) %>% filter_taxa(mean_test, prune=TRUE) %>% psmelt()
-
-melt.mar.rel %>% group_by(Month,Site,Rookery,Family,Genus) %>% summarize(Abund=sum(Abundance)) %>%  ggplot(aes(x=Rookery,y=Genus,fill=Abund)) + geom_tile(,group="Family") + facet_wrap(~Site,scales="free") + theme(axis.text.x = element_text(angle=90))
-```
-```{r}
-melt.mar.rel
-```
-
-
-```{r}
-gen.melt.mar.rel <- melt.mar.rel %>% ungroup() %>% mutate(Names=word(NewName,sep="R")) %>% group_by(Genus,Names,Rookery,Site) %>% summarize(Abund=sum(Abundance)) %>% ungroup() %>% group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>% mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund)) %>% group_by(Site) %>% arrange(.,Rookery,.by_group=TRUE) %>% ungroup() %>% select(-c(Rookery,Site))
-
-gen.rel.tab <- gen.melt.mar.rel %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Names,values_from=RelAbund) %>% as.data.frame()
-rownames(gen.rel.tab) <- gen.rel.tab$Genus
-gen.rel.tab$Genus <- NULL
-gen.rel.dt <- melt.mar.rel %>% ungroup() %>% mutate(Names=word(NewName,sep="R")) %>% group_by(.,Names) %>% summarize(Month=unique(Month),Site=unique(Site),Rookery=unique(Rookery))
-
-
- 
- 
- 
-
-annotation_col = gen.rel.dt %>% group_by(Rookery,Site) %>% 
-  arrange("Rookery",.by_group=TRUE) %>% ungroup() %>% 
-  select(c(Names,Rookery,Site)) %>% 
-  mutate(Rookery=factor(Rookery,ordered=TRUE),
-         Site=factor(Site,ordered=TRUE)) %>% 
-  data.frame(.,row.names = "Names")
-```
-
-```{r}
-pheatmap::pheatmap(gen.rel.tab,cluster_cols=FALSE,annotation_col=annotation_col,gaps_col=c(8,16))
-```
-
-## 4b. other verts  
-```{r}
-melt.bold.rel <- ps.bold.rel %>% 
-  subset_taxa(.,Phylum=="Chordata") %>%
-  tax_glom(.,"Genus",NArm=TRUE) %>% 
-  #filter_taxa(mean_test, prune=TRUE) %>%
-  psmelt()
-```
-```{r}
-melt.bold.rel
-```
-
-
-```{r}
-gen.melt.bold.rel <- melt.bold.rel %>% ungroup() %>% mutate(Names=word(NewName,sep="R")) %>% group_by(Genus,Names,Rookery,Site) %>% summarize(Abund=sum(Abundance)) %>% ungroup() %>% group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>% mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund)) %>% group_by(Site) %>% arrange(.,Rookery,.by_group=TRUE) %>% ungroup() %>% select(-c(Rookery,Site))
-
-gen.rel.tab <- gen.melt.bold.rel %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Names,values_from=RelAbund) %>% as.data.frame() 
-rownames(gen.rel.tab) <- gen.rel.tab$Genus
-gen.rel.tab$Genus <- NULL
-gen.rel.tab <- gen.rel.tab %>% mutate(tmp=rowSums(.)) %>% arrange(desc(tmp)) %>% filter(tmp>0.01) %>% select(-tmp)
-
-gen.rel.dt <- melt.bold.rel %>% ungroup() %>% mutate(Names=word(NewName,sep="R")) %>% group_by(.,Names) %>% summarize(Month=unique(Month),Site=unique(Site),Rookery=unique(Rookery))
-
-
-annotation_col = gen.rel.dt %>% group_by(Rookery,Site) %>% 
-  arrange("Rookery",.by_group=TRUE) %>% ungroup() %>% 
-  select(c(Names,Rookery,Site)) %>% 
-  mutate(Rookery=factor(Rookery,ordered=TRUE),
-         Site=factor(Site,ordered=TRUE)) %>% 
-  data.frame(.,row.names = "Names")
-
-annotation_row = melt.bold.rel %>% select(c(Class,Genus)) %>% distinct() %>% group_by(Class,Genus) %>% arrange("Class",.by_group = TRUE) %>% ungroup() %>% mutate(Class=factor(Class,ordered=TRUE)) %>% data.frame(.,row.names="Genus")
-```
-
-```{r}
-pheatmap::pheatmap(gen.rel.tab,cluster_cols=FALSE,cluster_rows=FALSE,annotation_row=annotation_row,annotation_col=annotation_col,gaps_col=c(8,16),cellheight = 5)
-```
-
-```{r}
-pheatmap::pheatmap((gen.rel.tab %>% filter(rownames(.) %in% rownames(annotation_row %>% filter(Class!="Actinopterygii" & Class != "Ascidiacea")))),cluster_cols=FALSE,cluster_rows=FALSE,annotation_row=annotation_row,annotation_col=annotation_col,gaps_col=c(8,16))
+rel.fsh.model1 <- lmer(Abundance ~ Rookery*Diettroph + (1|Site) + (1|Month), data = ps.fsh.rel.melt)
+rel.fsh.model2 <- lmer(Abundance ~ Diettroph  + (1|Site) + (1|Month), data = ps.fsh.rel.melt)
+rel.fsh.model3 <- lmer(Abundance ~ Diettroph + (1|Month) , data = ps.fsh.rel.melt)
+
+anova(rel.fsh.model1,rel.fsh.model2)
+anova(rel.fsh.model1,rel.fsh.model2,rel.fsh.model3)
+
+summary(rel.fsh.model1)
+# help("pvalues",package="lme4")
+car::Anova(rel.fsh.model1)
+lmerTest::ranova(rel.fsh.model1)
 ```
 
 # Indicator species   
@@ -538,9 +859,8 @@ pheatmap::pheatmap((gen.rel.tab %>% filter(rownames(.) %in% rownames(annotation_
 library(indicspecies) #needs a matrix or data frame with sites as rows and species in columns  
 ```
 
-MAR fish species, relative abundance  
 ```{r}
-indic.melt <- ps.mar.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
+indic.melt <- ps.prune.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
   psmelt() %>% 
   mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
   group_by(Genus,Names,Rookery,Site) %>% 
@@ -548,33 +868,244 @@ indic.melt <- ps.mar.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genu
   group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>%
   mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund))
 
-indic.tab <- indic.melt %>% select(c(Names,RelAbund,Genus)) %>% distinct() %>% pivot_wider(names_from = Genus,values_from=RelAbund) %>% as.data.frame() 
+indic.tab <- indic.melt %>% 
+  select(c(Names,RelAbund,Genus)) %>%
+  distinct() %>% 
+  pivot_wider(names_from = Genus,values_from=RelAbund) %>% 
+  as.data.frame() 
 rownames(indic.tab) <- indic.tab$Names
 indic.tab$Names <- NULL
+
+indic.patt <- indic.melt %>% 
+  select(c(Names,Rookery)) %>% 
+  distinct() %>% 
+  mutate(Rookery=case_when(Rookery=="Rookery" ~ 1, .default=0))
+
+indic.df <- indic.melt %>% 
+  select(c(Names,Rookery,Site)) %>% 
+  distinct()
+
+perm_indic <-how(nperm=999)
+setBlocks(perm_indic) <- with(indic.df,Site)
+
+indval <- multipatt(indic.tab, indic.patt$Rookery,
+                    #allow.negative=TRUE, 
+                    control = perm_indic) 
+
+summary(indval,indvalcomp=TRUE) #using indvalcomp=TRUE gives us the probability of finding the species in sites belonging to the site group 
+```
+```{r}
+indval$sign %>% as.data.frame() %>% arrange(p.value) %>% filter(p.value <0.05) %>% rownames()
+
+coverage(indic.tab,indval)
 ```
 
 ```{r}
-perm_indic <-how(nperm=999)
-setBlocks(perm_indic) <- with(gen.rel.dt,Site)
+indic.ch.melt <- ps.ch.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
+  psmelt() %>% 
+  mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
+  group_by(Genus,Names,Rookery,Site) %>% 
+  summarize(Abund=sum(Abundance)) %>% ungroup() %>% 
+  group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>%
+  mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund))
 
-indval <- multipatt(indic.tab, gen.rel.dt$Rookery, 
-                    control = perm_indic) 
-summary(indval)
+indic.ch.tab <- indic.ch.melt %>% 
+  select(c(Names,RelAbund,Genus)) %>%
+  distinct() %>% 
+  pivot_wider(names_from = Genus,values_from=RelAbund) %>% 
+  as.data.frame() 
+rownames(indic.ch.tab) <- indic.ch.tab$Names
+indic.ch.tab$Names <- NULL
+
+indic.ch.patt <- indic.ch.melt %>% 
+  select(c(Names,Rookery)) %>% 
+  distinct() %>% 
+  mutate(Rookery=case_when(Rookery=="Rookery" ~ 1, .default=0))
+
+indic.ch.df <- indic.ch.melt %>% 
+  select(c(Names,Rookery,Site)) %>% 
+  distinct()
+
+perm_indic.ch <-how(nperm=999)
+setBlocks(perm_indic.ch) <- with(indic.ch.df,Site)
+
+indval.ch <- multipatt(indic.ch.tab, indic.ch.patt$Rookery, 
+                    control = perm_indic.ch,
+                    allow.negative=TRUE) 
+
+summary(indval.ch,indvalcomp=TRUE) #using indvalcomp=TRUE gives us the probability of finding the species in sites belonging to the site group 
 ```
 
-(whole dataset)  
 ```{r}
-perm_indic <-how(nperm=999)
-setBlocks(perm_indic) <- with(as.data.frame(sample_data(ps.mar.rel)),Site)
+indic.fsh.melt <- ps.fsh.rel %>% tax_glom(.,"Genus",NArm=TRUE) %>% #collapse by genus, removing anything not assigned to genus
+  psmelt() %>% 
+  mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
+  group_by(Genus,Names,Rookery,Site) %>% 
+  summarize(Abund=sum(Abundance)) %>% ungroup() %>% 
+  group_by(Names) %>% mutate(RelAbund=Abund/sum(Abund)) %>%
+  mutate(RelAbund=case_when(is.nan(RelAbund) ~ 0,!is.nan(RelAbund) ~ RelAbund))
 
-indval <- multipatt(t(otu_table(ps.mar.rel)), sample_data(ps.mar.rel)$Rookery, 
-                    control = perm_indic) 
-summary(indval)
+indic.fsh.tab <- indic.fsh.melt %>% 
+  select(c(Names,RelAbund,Genus)) %>%
+  distinct() %>% 
+  pivot_wider(names_from = Genus,values_from=RelAbund) %>% 
+  as.data.frame() 
+rownames(indic.fsh.tab) <- indic.fsh.tab$Names
+indic.fsh.tab$Names <- NULL
+
+indic.fsh.patt <- indic.fsh.melt %>% 
+  select(c(Names,Rookery)) %>% 
+  distinct() %>% 
+  mutate(Rookery=case_when(Rookery=="Rookery" ~ 1, .default=0))
+
+indic.fsh.df <- indic.fsh.melt %>% 
+  select(c(Names,Rookery,Site)) %>% 
+  distinct()
+
+perm_indic.fsh <-how(nperm=999)
+setBlocks(perm_indic.fsh) <- with(indic.fsh.df,Site)
+
+indval.fsh <- multipatt(indic.fsh.tab, indic.fsh.patt$Rookery, 
+                    control = perm_indic.fsh) 
+
+summary(indval.fsh,indvalcomp=TRUE) #using indvalcomp=TRUE gives us the probability of finding the species in sites belonging to the site group 
 ```
+
+## Phi coefficient of association  
+(additional metric index to analyze association between a species and group of sites. This is a coefficient that emasures the correlation between binary vectors - presence/absence)
+```{r}
+indic.fsh.pa.melt <- ps.fsh.pa %>% tax_glom(.,"Species",NArm=TRUE) %>% #collapse by Species, removing anything not assigned to Species
+  psmelt() %>% 
+  mutate(Names=word(NewName,sep="R")) %>% #make a sample name that doesn't include replicate or leeward/windwward
+  group_by(Species,Names,Rookery,Site) %>% 
+  summarize(Abund=sum(Abundance)) %>% ungroup() %>% 
+  group_by(Names) %>% 
+  mutate(PA=case_when(is.nan(Abund) ~ 0,Abund>0 ~ 1, .default=0))
+
+indic.fsh.pa.tab <- indic.fsh.pa.melt %>% 
+  select(c(Names,PA,Species)) %>%
+  distinct() %>% 
+  pivot_wider(names_from = Species,values_from=PA) %>% 
+  as.data.frame() 
+rownames(indic.fsh.pa.tab) <- indic.fsh.pa.tab$Names
+indic.fsh.pa.tab$Names <- NULL
+
+indic.fsh.pa.patt <- indic.fsh.pa.melt %>% 
+  select(c(Names,Rookery)) %>% 
+  distinct() %>% 
+  mutate(Rookery=case_when(Rookery=="Rookery" ~ 1, .default=0))
+
+indic.fsh.pa.df <- indic.fsh.pa.melt %>% 
+  select(c(Names,Rookery,Site)) %>% 
+  distinct()
+
+perm_indic.pa.fsh <-how(nperm=999)
+setBlocks(perm_indic.pa.fsh) <- with(indic.fsh.pa.df,Site)
+
+phi <- multipatt(indic.fsh.pa.tab, indic.fsh.pa.patt$Rookery,
+                 func = "r.g", #corrects for the fact that some groups have more sites  
+                 control = perm_indic.pa.fsh) 
+
+summary(phi)
+round((phi$str),3)
+```
+
+# IUCN  
+```{r}
+iucn.df <- ps.prune.rel.fsh.melt %>%
+   mutate(IUCN.Category=case_when(IUCN.Category=="" ~ "Status not recorded in FishBase",
+                                 is.na(IUCN.Category) ~ "Status not recorded in FishBase",
+                                 .default=IUCN.Category)) %>% 
+  arrange(Rookery,IUCN.Category) %>% 
+  mutate(IUCN.Category=factor(IUCN.Category,levels=c("Endangered","Vulnerable",
+                                                     "Near Threatened","Least Concern",
+                                                     "Data Deficient",
+                                                     "Status not recorded in FishBase"),
+                              ordered=TRUE)
+         ) %>% 
+  group_by(Rookery, Site, IUCN.Category) %>%
+  filter(Abundance > 0) %>%
+  reframe(n=length(unique(Species)))
+
+iucn.df %>% 
+  mutate(IUCN.Category=factor(IUCN.Category,levels=c("Status not recorded in FishBase",
+                                                     "Data Deficient","Least Concern",
+                                                     "Near Threatened","Vulnerable","Endangered"),
+                              ordered=TRUE)
+         ) %>% arrange(Rookery,IUCN.Category)
+```
+
+```{r}
+iucn.df %>%
+  ggplot(aes(x=Rookery,y=n,fill=IUCN.Category)) +
+#ps.prune.rel %>% 
+  #plot_bar(x="SampleName_Short",fill="IUCN.Category") + 
+  geom_bar(stat="identity",color="black") + 
+  ggpubr::theme_pubr() +
+  facet_wrap(~Site) + 
+  labs(y="Number of species") + 
+  theme(axis.title.x=element_blank())
+
+#ggsave("Figures/n.spp.IUCN.site.png",width=7,height=5)
+```
+
+# Commercially Relevant  
+```{r impspp_plot}
+comm.sp <- ps.prune.rel.fsh.melt %>% 
+  filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  #select(contains("Commer") | contains("Small.scale")) %>%
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% mutate(New=case_when(is.na(New) ~ FALSE,.default=New))
+
+comm.sp.pa <- ps.prune.pa %>%
+  subset_taxa(Phylum=="Chordata") %>% 
+  prune_taxa(taxa_sums(.)>0,.) %>%
+  psmelt() %>%
+  filter(Abundance > 0) %>% 
+  group_by(Site,Month) %>%
+  mutate(Rel=Abundance/sum(Abundance)) %>% ungroup() %>% 
+  #select(contains("Commer") | contains("Small.scale")) %>%
+  mutate(Commercial.FSH=ifelse(str_detect(Reported.Commercial.FishbaseSpeciesPage,"Yes"),"TRUE","FALSE"),.after = Reported.Commercial.FishbaseSpeciesPage) %>% rowwise() %>% 
+  mutate(New= any(c_across(contains("Commer") | contains("Small.scale"))=="TRUE")
+  ) %>% mutate(New=case_when(is.na(New) ~ FALSE,.default=New))
+```
+```{r}
+comm.sp %>%
+  ggplot(aes(x=Month,fill=New,y=Rel)) +
+  geom_bar(stat="identity",position="stack") + 
+  facet_grid(Site ~ Rookery) +
+  guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) +
+  theme_bw() +
+  labs(y="Relative Abundance")
+
+comm.sp.pa %>%
+  ggplot(aes(x=Month,fill=New,y=Rel)) + 
+  geom_bar(stat="identity",position="stack") + 
+  facet_grid(Site ~ Rookery) +
+  guides(fill=guide_legend(title="Critical species \n (Commercial and \n small-scale fisheries)")) +
+  theme_bw() +
+  labs(y="Relative Abundance")
+
+#ggsave("Figures/commercial.spp.png")
+```
+
+# Habitat  
+```{r}
+colnames(ps.prune.rel.fsh.melt[100:125])
+
+ps.prune.rel.fsh.melt %>% mutate(Type=case_when(Benthic==-1 ~ "Benthic",
+                                            Demersal==-1 ~ "Demersal",
+                                            Pelagic==-1 ~ "Pelagic"
+                                            )) %>% ggplot(aes(x=SampleName_Short,y=Abundance,fill=Type)) + geom_bar(stat="identity")
+```
+
 
 # Session Info   
 ```{r}
-save.image("RData/08_Analysis.RData")
+save.image("RData/08_Analysis_bray.RData")
 ```
 
 ```{r}
