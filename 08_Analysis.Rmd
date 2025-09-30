@@ -1102,6 +1102,22 @@ ps.prune.rel.fsh.melt %>% mutate(Type=case_when(Benthic==-1 ~ "Benthic",
                                             )) %>% ggplot(aes(x=SampleName_Short,y=Abundance,fill=Type)) + geom_bar(stat="identity")
 ```
 
+# Relative scale of biodiversity per hectacre  
+```{r}
+size.tab <- read.csv("/Users/lauragivens/Desktop/MangroveResults/StudySites_area.csv")
+
+size.tab
+```
+
+
+# 4. Does community composition change with distance from shore?  
+
+# 5. Does community composition change with proximity to human pops?  
+People live on Turneffe - do we see a u-shape of impact on biodiversity?  
+E.g., nearshore there is impacts from human, then gets better further from shore, then is impacted again closer to Turneffe?    
+
+# 6. Does community composition change based on size of caye?  
+Do larger cayes have a smaller loss rate/turnover?  
 
 # Session Info   
 ```{r}
